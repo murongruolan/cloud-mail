@@ -81,26 +81,42 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('tabSetting')" :width="settingWidth">
+          <el-table-column :label="$t('remark')" min-width="160" class-name="remark-cell">
             <template #default="props">
-              <el-button size="small" type="primary" v-if="(props.row.type === 0 && userStore.user.type !== 0)" >{{ $t('action') }}</el-button>
-              <el-dropdown v-else >
-                <el-button size="small" type="primary">{{ $t('action') }}</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="openSetPwd(props.row)" >{{ $t('chgPwd') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openSetType(props.row)" >{{ $t('perm') }}</el-dropdown-item>
-                    <template v-if="props.row.type !== 0">
-                      <el-dropdown-item v-if="props.row.isDel !== 1" @click="setStatus(props.row)">
-                        {{ setStatusName(props.row) }}
-                      </el-dropdown-item>
-                      <el-dropdown-item v-else @click="restore(props.row)">{{ $t('restore') }}</el-dropdown-item>
-                    </template>
-                    <el-dropdown-item @click="openAccountList(props.row.userId)" >{{ $t('account') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openDetails(props.row)" >{{ $t('details') }}</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <div class="remark" :title="props.row.remark">
+                {{ props.row.remark || '-' }}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('tabSetting')" :width="settingWidth" class-name="setting-cell" fixed="right">
+            <template #default="props">
+              <div class="setting-actions">
+                <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    :disabled="isRemarkDisabled(props.row)"
+                    @click="openSetRemark(props.row)"
+                >{{ $t('remark') }}</el-button>
+                <el-button size="small" type="primary" disabled v-if="(props.row.type === 0 && userStore.user.type !== 0)" >{{ $t('action') }}</el-button>
+                <el-dropdown v-else >
+                  <el-button size="small" type="primary">{{ $t('action') }}</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="openSetPwd(props.row)" >{{ $t('chgPwd') }}</el-dropdown-item>
+                      <el-dropdown-item @click="openSetType(props.row)" >{{ $t('perm') }}</el-dropdown-item>
+                      <template v-if="props.row.type !== 0">
+                        <el-dropdown-item v-if="props.row.isDel !== 1" @click="setStatus(props.row)">
+                          {{ setStatusName(props.row) }}
+                        </el-dropdown-item>
+                        <el-dropdown-item v-else @click="restore(props.row)">{{ $t('restore') }}</el-dropdown-item>
+                      </template>
+                      <el-dropdown-item @click="openAccountList(props.row.userId)" >{{ $t('account') }}</el-dropdown-item>
+                      <el-dropdown-item @click="openDetails(props.row)" >{{ $t('details') }}</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -153,6 +169,21 @@
         </el-button>
       </div>
     </el-dialog>
+    <el-dialog class="dialog" v-model="setRemarkShow" :title="$t('changeRemark')" @closed="resetUserForm">
+      <div class="dialog-box">
+        <el-input
+            v-model="userForm.remark"
+            type="textarea"
+            :rows="4"
+            :maxlength="100"
+            show-word-limit
+            :placeholder="$t('remark')"
+        />
+        <el-button class="btn" type="primary" :loading="settingLoading" @click="setRemark"
+        >{{ $t('save') }}
+        </el-button>
+      </div>
+    </el-dialog>
     <el-dialog v-model="showAdd" :title="$t('addUser')">
       <div class="container">
         <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
@@ -179,6 +210,7 @@
           </template>
         </el-input>
         <el-input type="password" v-model="addForm.password" :placeholder="$t('password')"/>
+        <el-input v-model="addForm.remark" type="text" :maxlength="100" :placeholder="$t('remark')" autocomplete="off"/>
         <el-select v-model="addForm.type" :placeholder="$t('perm')">
           <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
         </el-select>
@@ -372,6 +404,7 @@ import {
   userSetPwd,
   userSetStatus,
   userSetType,
+  userSetRemark,
   userAdd,
   userRestSendCount,
   userRestore,
@@ -440,6 +473,7 @@ const addForm = reactive({
   email: '',
   suffix: settingStore.domainList[0],
   password: '',
+  remark: '',
   type: null,
 })
 
@@ -453,6 +487,7 @@ const params = reactive({
 let chooseUser = {}
 const userForm = reactive({
   password: null,
+  remark: '',
   type: -1,
   userId: 0,
 })
@@ -462,6 +497,7 @@ const accountShow = ref(false)
 const addLoading = ref(false);
 const setTypeShow = ref(false)
 const setPwdShow = ref(false)
+const setRemarkShow = ref(false)
 const pagerCount = ref(10)
 const settingLoading = ref(false)
 const tableLoading = ref(true)
@@ -685,6 +721,7 @@ function resetAddForm() {
   addForm.suffix = settingStore.domainList[0]
   addForm.type = null
   addForm.password = ''
+  addForm.remark = ''
 }
 
 function openAdd() {
@@ -911,10 +948,39 @@ function setType() {
   })
 }
 
+function setRemark() {
+  settingLoading.value = true
+  const remark = userForm.remark.trim()
+  userSetRemark({remark, userId: userForm.userId}).then(() => {
+    chooseUser.remark = remark
+    if (userDetails.value.userId === userForm.userId) {
+      userDetails.value.remark = remark
+    }
+    setRemarkShow.value = false
+    ElMessage({
+      message: t('saveSuccessMsg'),
+      type: "success",
+      plain: true
+    })
+  }).finally(() => {
+    settingLoading.value = false
+  })
+}
+
 
 function resetUserForm() {
   userForm.password = null
+  userForm.remark = ''
   userForm.userId = 0
+}
+
+function canSetRemark() {
+  const permKeys = userStore.user.permKeys || []
+  return permKeys.includes('*') || permKeys.includes('user:set-type')
+}
+
+function isRemarkDisabled(user) {
+  return !canSetRemark() || (user.type === 0 && userStore.user.type !== 0)
 }
 
 function search() {
@@ -965,6 +1031,13 @@ function openSetType(user) {
 function openSetPwd(user) {
   userForm.userId = user.userId
   setPwdShow.value = true
+}
+
+function openSetRemark(user) {
+  chooseUser = user
+  userForm.userId = user.userId
+  userForm.remark = user.remark || ''
+  setRemarkShow.value = true
 }
 
 function refresh() {
@@ -1030,7 +1103,9 @@ function adjustWidth() {
   sendNumShow.value = width > 685
   typeShow.value = width > 767
   emailWidth.value = width > 480 ? 230 : null
-  settingWidth.value = width < 480 ? (locale.value === 'en' ? 85 : 75) : null
+  settingWidth.value = locale.value === 'en'
+      ? (width < 480 ? 150 : 170)
+      : (width < 480 ? 130 : 150)
   expandWidth.value = width < 480 ? 30 : 35
   pagerCount.value = width < 768 ? 7 : 11
   receiveWidth.value = width < 480 ? 90 : null
@@ -1121,6 +1196,31 @@ function adjustWidth() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.remark {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  width: max-content;
+}
+
+:deep(.setting-actions .el-button) {
+  flex-shrink: 0;
+}
+
+:deep(.setting-cell .cell) {
+  overflow: visible;
 }
 
 .choose-star {
@@ -1272,6 +1372,12 @@ function adjustWidth() {
 
 :deep(.account .cell) {
   white-space: nowrap;
+}
+
+:deep(.remark-cell .cell) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 :deep(.el-table) {

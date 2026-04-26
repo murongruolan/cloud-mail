@@ -19,6 +19,7 @@ const en = {
     deleteUser: 'Delete Account',
     deleteUserBtn: 'Delete',
     changePassword: 'Change Password',
+    changeRemark: 'Change Remark',
     newPassword: 'New password',
     confirmPassword: 'Confirm password',
     add: 'Add',
@@ -324,7 +325,8 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    remark: 'Remark'
 }
 
 export default en

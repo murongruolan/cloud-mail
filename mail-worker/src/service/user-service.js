@@ -286,6 +286,19 @@ const userService = {
 
 	},
 
+	async setRemark(c, params) {
+
+		const { userId, remark } = params;
+		const userRemark = typeof remark === 'string' ? remark.trim() : '';
+
+		await orm(c)
+			.update(user)
+			.set({ remark: userRemark })
+			.where(eq(user.userId, userId))
+			.run();
+
+	},
+
 	async incrUserSendCount(c, quantity, userId) {
 		await orm(c).update(user).set({
 			sendCount: sql`${user.sendCount}
@@ -304,7 +317,8 @@ const userService = {
 
 	async add(c, params) {
 
-		const { email, type, password } = params;
+		const { email, type, password, remark } = params;
+		const userRemark = typeof remark === 'string' ? remark.trim() : '';
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
 			throw new BizError(t('notEmailDomain'));
@@ -324,7 +338,7 @@ const userService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
-		const role = roleService.selectById(c, type);
+		const role = await roleService.selectById(c, type);
 
 		if (!role) {
 			throw new BizError(t('roleNotExist'));
@@ -332,7 +346,7 @@ const userService = {
 
 		const { salt, hash } = await saltHashUtils.hashPassword(password);
 
-		const userId = await userService.insert(c, { email, password: hash, salt, type });
+		const userId = await userService.insert(c, { email, password: hash, salt, type, remark: userRemark });
 
 		await userService.updateUserInfo(c, userId, true);
 

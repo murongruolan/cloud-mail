@@ -19,6 +19,7 @@ const zh = {
     deleteUser: '删除账户',
     deleteUserBtn: '删除账户',
     changePassword: '修改密码',
+    changeRemark: '修改备注',
     newPassword: '新的密码',
     confirmPassword: '确认密码',
     add: '添加',
@@ -324,6 +325,7 @@ const zh = {
     searchUser: '搜索用户',
     searchEmail: '搜索邮箱',
     searchSender: '搜索发件人',
-    userEmail: '用户邮箱'
+    userEmail: '用户邮箱',
+    remark: '备注'
 }
 export default zh

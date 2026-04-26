@@ -28,8 +28,17 @@ const dbInit = {
 		await this.v2_7DB(c);
 		await this.v2_8DB(c);
 		await this.v2_9DB(c);
+		await this.v2_10DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v2_10DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN remark TEXT NOT NULL DEFAULT '';`).run();
+		} catch (e) {
+			console.warn(`璺宠繃瀛楁锛?{e.message}`);
+		}
 	},
 
 	async v2_9DB(c) {
@@ -545,6 +554,7 @@ const dbInit = {
 			type INTEGER DEFAULT 1 NOT NULL,
 			password TEXT NOT NULL,
 			salt TEXT NOT NULL,
+			remark TEXT NOT NULL DEFAULT '',
 			status INTEGER DEFAULT 0 NOT NULL,
 			create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 			active_time DATETIME,
