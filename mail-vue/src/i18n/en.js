@@ -162,6 +162,7 @@ const en = {
     turnstileSetting: 'Turnstile',
     signUpVerification: 'Sign Up Verification',
     addEmailVerification: 'Add Email Verification',
+    loginVerification: 'Login Verification',
     about: 'About',
     version: 'Version',
     community: 'Community',

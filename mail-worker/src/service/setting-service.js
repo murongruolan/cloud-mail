@@ -6,6 +6,7 @@ import fileUtils from '../utils/file-utils';
 import r2Service from './r2-service';
 import constant from '../const/constant';
 import BizError from '../error/biz-error';
+import { settingConst } from '../const/entity-const';
 import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 
@@ -134,9 +135,28 @@ const settingService = {
 			params.emailPrefixFilter = params.emailPrefixFilter + '';
 		}
 
+		this.validateTurnstileConfig({ ...settingData, ...params });
+
 		params.resendTokens = JSON.stringify(resendTokens);
 		await orm(c).update(setting).set({ ...params }).returning().get();
 		await this.refresh(c);
+	},
+
+	validateTurnstileConfig(settingData) {
+		const needTurnstile =
+			settingData.registerVerify === settingConst.registerVerify.OPEN ||
+			settingData.registerVerify === settingConst.registerVerify.COUNT ||
+			settingData.addEmailVerify === settingConst.addEmailVerify.OPEN ||
+			settingData.addEmailVerify === settingConst.addEmailVerify.COUNT ||
+			settingData.loginVerify === settingConst.loginVerify.OPEN;
+
+		if (!needTurnstile) {
+			return;
+		}
+
+		if (!settingData.siteKey?.trim() || !settingData.secretKey?.trim()) {
+			throw new BizError(t('turnstileKeyNotConfig'), 400);
+		}
 	},
 
 	async deleteBackground(c) {
@@ -196,6 +216,7 @@ const settingService = {
 			autoRefresh: settingRow.autoRefresh,
 			addEmailVerify: settingRow.addEmailVerify,
 			registerVerify: settingRow.registerVerify,
+			loginVerify: settingRow.loginVerify,
 			send: settingRow.send,
 			r2Domain: settingRow.r2Domain,
 			siteKey: settingRow.siteKey,

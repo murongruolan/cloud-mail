@@ -81,7 +81,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('remark')" min-width="160" class-name="remark-cell">
+          <el-table-column v-if="remarkShow" :label="$t('remark')" min-width="160" class-name="remark-cell">
             <template #default="props">
               <div class="remark" :title="props.row.remark">
                 {{ props.row.remark || '-' }}
@@ -440,6 +440,7 @@ const accountNumShow = ref(true)
 const createTimeShow = ref(true)
 const statusShow = ref(true)
 const typeShow = ref(true)
+const remarkShow = ref(true)
 const receiveWidth = ref(null)
 const phonePageShow = ref(false)
 const detailsShow = ref(false);
@@ -1102,6 +1103,7 @@ function adjustWidth() {
   accountNumShow.value = width > 650
   sendNumShow.value = width > 685
   typeShow.value = width > 767
+  remarkShow.value = width > 1150
   emailWidth.value = width > 480 ? 230 : null
   settingWidth.value = locale.value === 'en'
       ? (width < 480 ? 150 : 170)

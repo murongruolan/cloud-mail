@@ -29,8 +29,17 @@ const dbInit = {
 		await this.v2_8DB(c);
 		await this.v2_9DB(c);
 		await this.v2_10DB(c);
+		await this.v2_11DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v2_11DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN login_verify INTEGER NOT NULL DEFAULT 1;`).run();
+		} catch (e) {
+			console.warn(`璺宠繃瀛楁锛?{e.message}`);
+		}
 	},
 
 	async v2_10DB(c) {

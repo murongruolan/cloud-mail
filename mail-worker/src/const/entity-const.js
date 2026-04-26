@@ -104,6 +104,10 @@ export const settingConst = {
 		CLOSE: 1,
 		COUNT: 2,
 	},
+	loginVerify: {
+		OPEN: 0,
+		CLOSE: 1,
+	},
 	forwardStatus: {
 		OPEN: 0,
 		CLOSE: 1,
