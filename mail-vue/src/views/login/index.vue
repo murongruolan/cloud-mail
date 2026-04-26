@@ -206,6 +206,7 @@ const registerLoading = ref(false)
 suffix.value = domainList[0]
 const verifyShow = ref(false)
 const loginVerifyShow = ref(false)
+const pendingLoginAfterVerify = ref(false)
 let verifyToken = ''
 let turnstileId = null
 let botJsError = ref(false)
@@ -221,6 +222,10 @@ window.onTurnstileSuccess = (token) => {
 
 window.onLoginTurnstileSuccess = (token) => {
   loginVerifyToken = token;
+  if (pendingLoginAfterVerify.value && !loginLoading.value) {
+    pendingLoginAfterVerify.value = false
+    doLogin()
+  }
 };
 
 window.onTurnstileError = (e) => {
@@ -385,7 +390,6 @@ function bind() {
 }
 
 const submit = () => {
-
   if (!form.email) {
     ElMessage({
       message: t('emptyEmailMsg'),
@@ -416,6 +420,7 @@ const submit = () => {
   }
 
   if (!loginVerifyToken && settingStore.settings.loginVerify === 0) {
+    pendingLoginAfterVerify.value = true
     if (!loginVerifyShow.value) {
       loginVerifyShow.value = true
       nextTick(() => {
@@ -440,11 +445,19 @@ const submit = () => {
     return
   }
 
+  pendingLoginAfterVerify.value = false
+  doLogin()
+}
+
+function doLogin() {
+  let email = form.email + (settingStore.settings.loginDomain === 0 ? suffix.value : '');
+
   loginLoading.value = true
   login(email, form.password, loginVerifyToken).then(async data => {
     await saveToken(data.token)
   }).catch(() => {
     if (settingStore.settings.loginVerify === 0) {
+      pendingLoginAfterVerify.value = false
       loginVerifyToken = ''
       loginVerifyShow.value = true
       if (loginTurnstileId) {
