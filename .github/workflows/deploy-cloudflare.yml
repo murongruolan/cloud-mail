@@ -226,6 +226,22 @@ jobs:
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
           echo "✅ Setup completed."
 
+      - name: 🧹 删除初始化标记 / Delete init marker
+        working-directory: ./mail-worker
+        run: |
+          echo "🧹 Removing remote init marker..."
+
+          KV_ID=$(grep -oP '^id = "\K[^"]+' wrangler-action.toml | head -n 1)
+
+          if [ -z "$KV_ID" ]; then
+            echo "❌ KV namespace id not found in wrangler-action.toml"
+            exit 1
+          fi
+
+          pnpm wrangler kv key delete is_init --namespace-id "$KV_ID" --remote || true
+
+          echo "✅ Init marker cleanup completed."
+
       - name: ♻️ 初始化数据库 / Initialize database
         run: |
           echo "🛠️ Starting database initialization..."

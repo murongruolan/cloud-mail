@@ -15,6 +15,7 @@
         <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
         <div v-show="show === 'login'">
           <el-input :class="settingStore.settings.loginDomain === 0 ? 'email-input' : ''" v-model="form.email"
+                    @keydown.enter="submit"
                     type="text" :placeholder="$t('emailAccount')" autocomplete="off">
             <template #append v-if="settingStore.settings.loginDomain === 0">
               <div class="domain-select-trigger" @click.stop="openSelect">
@@ -40,7 +41,7 @@
               </div>
             </template>
           </el-input>
-          <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off">
+          <el-input v-model="form.password" @keydown.enter="submit" :placeholder="$t('password')" type="password" autocomplete="off">
           </el-input>
           <div v-show="loginVerifyShow"
                class="login-turnstile"
@@ -58,7 +59,7 @@
           </el-button>
         </div>
         <div v-show="show !== 'login'">
-          <el-input class="email-input" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
+          <el-input class="email-input" v-model="registerForm.email" @keydown.enter="submitRegister" type="text" :placeholder="$t('emailAccount')"
                     autocomplete="off">
             <template #append>
               <div class="domain-select-trigger" @click.stop="openSelect">
@@ -84,12 +85,12 @@
               </div>
             </template>
           </el-input>
-          <el-input v-model="registerForm.password" :placeholder="$t('password')" type="password" autocomplete="off"/>
-          <el-input v-model="registerForm.confirmPassword" :placeholder="$t('confirmPwd')" type="password"
+          <el-input v-model="registerForm.password" @keydown.enter="submitRegister" :placeholder="$t('password')" type="password" autocomplete="off"/>
+          <el-input v-model="registerForm.confirmPassword" @keydown.enter="submitRegister" :placeholder="$t('confirmPwd')" type="password"
                     autocomplete="off"/>
-          <el-input v-if="settingStore.settings.regKey === 0" v-model="registerForm.code" :placeholder="$t('regKey')"
+          <el-input v-if="settingStore.settings.regKey === 0" v-model="registerForm.code" @keydown.enter="submitRegister" :placeholder="$t('regKey')"
                     type="text" autocomplete="off"/>
-          <el-input v-if="settingStore.settings.regKey === 2" v-model="registerForm.code"
+          <el-input v-if="settingStore.settings.regKey === 2" v-model="registerForm.code" @keydown.enter="submitRegister"
                     :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
           <div v-show="verifyShow"
                class="register-turnstile"
@@ -118,7 +119,7 @@
     </div>
     <el-dialog class="bind-dialog" v-model="showBindForm"  title="注册邮箱" >
       <div class="bind-container">
-        <el-input v-model="bindForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+        <el-input v-model="bindForm.email" @keydown.enter="bind" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
           <template #append>
             <div class="domain-select-trigger" @click.stop="openSelect">
               <el-select
@@ -142,9 +143,9 @@
             </div>
           </template>
         </el-input>
-        <el-input v-if="settingStore.settings.regKey === 0" v-model="bindForm.code" :placeholder="$t('regKey')"
+        <el-input v-if="settingStore.settings.regKey === 0" v-model="bindForm.code" @keydown.enter="bind" :placeholder="$t('regKey')"
                   type="text" autocomplete="off"/>
-        <el-input v-if="settingStore.settings.regKey === 2" v-model="bindForm.code"
+        <el-input v-if="settingStore.settings.regKey === 2" v-model="bindForm.code" @keydown.enter="bind"
                   :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
         <el-button class="btn" type="primary" @click="bind" :loading="bindLoading"
         >绑定
