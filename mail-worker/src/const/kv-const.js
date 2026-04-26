@@ -3,7 +3,8 @@ const KvConst = {
 	SETTING: 'setting:',
 	SEND_DAY_COUNT: 'send_day_count:',
 	PUBLIC_KEY: "public_key:",
-	DB_BACKUP_RUN_AT: 'db_backup_run_at:'
+	DB_BACKUP_RUN_AT: 'db_backup_run_at:',
+	IS_INIT: 'is_init'
 }
 
 export default KvConst;

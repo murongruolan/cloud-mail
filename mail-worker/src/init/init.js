@@ -1,5 +1,6 @@
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
+import KvConst from '../const/kv-const';
 import {emailConst} from "../const/entity-const";
 
 const dbInit = {
@@ -9,6 +10,12 @@ const dbInit = {
 
 		if (secret !== c.env.jwt_secret) {
 			return c.text('❌ JWT secret mismatch');
+		}
+
+		const isInit = await c.env.kv.get(KvConst.IS_INIT);
+
+		if (isInit === 'true') {
+			return c.text('❌ Already initialized', 409);
 		}
 
 		await this.intDB(c);
@@ -32,6 +39,7 @@ const dbInit = {
 		await this.v2_11DB(c);
 		await this.v2_12DB(c);
 		await settingService.refresh(c);
+		await c.env.kv.put(KvConst.IS_INIT, 'true');
 		return c.text('success');
 	},
 
