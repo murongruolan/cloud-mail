@@ -138,6 +138,7 @@ const settingService = {
 		}
 
 		this.validateTurnstileConfig({ ...settingData, ...params });
+		this.validateAttachmentLimitConfig({ ...settingData, ...params });
 		this.validateBackupConfig({ ...settingData, ...params });
 
 		params.resendTokens = JSON.stringify(resendTokens);
@@ -184,6 +185,23 @@ const settingService = {
 
 		if (!hasBackupStorage) {
 			throw new BizError(t('backupStorageNotConfig'), 400);
+		}
+	},
+
+	validateAttachmentLimitConfig(settingData) {
+		if (settingData.attachmentLimit !== settingConst.attachmentLimit.OPEN) {
+			return;
+		}
+
+		const attachmentSizeLimitMb = settingData.attachmentSizeLimitMb;
+		const contentImageSizeLimitMb = settingData.contentImageSizeLimitMb;
+
+		if (attachmentSizeLimitMb == null || contentImageSizeLimitMb == null) {
+			throw new BizError(t('attachmentLimitNotConfig'), 400);
+		}
+
+		if (Number(attachmentSizeLimitMb) < 0 || Number(contentImageSizeLimitMb) < 0) {
+			throw new BizError(t('attachmentLimitNotConfig'), 400);
 		}
 	},
 
@@ -241,6 +259,9 @@ const settingService = {
 			title: settingRow.title,
 			manyEmail: settingRow.manyEmail,
 			addEmail: settingRow.addEmail,
+			attachmentLimit: settingRow.attachmentLimit,
+			attachmentSizeLimitMb: settingRow.attachmentSizeLimitMb,
+			contentImageSizeLimitMb: settingRow.contentImageSizeLimitMb,
 			autoRefresh: settingRow.autoRefresh,
 			addEmailVerify: settingRow.addEmailVerify,
 			registerVerify: settingRow.registerVerify,

@@ -38,9 +38,26 @@ const dbInit = {
 		await this.v2_10DB(c);
 		await this.v2_11DB(c);
 		await this.v2_12DB(c);
+		await this.v2_13DB(c);
 		await settingService.refresh(c);
 		await c.env.kv.put(KvConst.IS_INIT, 'true');
 		return c.text('success');
+	},
+
+	async v2_13DB(c) {
+		const sqlList = [
+			`ALTER TABLE setting ADD COLUMN attachment_limit INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE setting ADD COLUMN attachment_size_limit_mb INTEGER;`,
+			`ALTER TABLE setting ADD COLUMN content_image_size_limit_mb INTEGER;`
+		];
+
+		for (const sql of sqlList) {
+			try {
+				await c.env.db.prepare(sql).run();
+			} catch (e) {
+				console.warn(`跳过字段：${e.message}`);
+			}
+		}
 	},
 
 	async v2_12DB(c) {
@@ -619,6 +636,9 @@ const dbInit = {
 			register INTEGER NOT NULL,
 			receive INTEGER NOT NULL,
 			add_email INTEGER NOT NULL,
+			attachment_limit INTEGER NOT NULL DEFAULT 1,
+			attachment_size_limit_mb INTEGER,
+			content_image_size_limit_mb INTEGER,
 			many_email INTEGER NOT NULL,
 			backup_db INTEGER NOT NULL DEFAULT 1,
 			backup_interval_days INTEGER NOT NULL DEFAULT 1,
@@ -639,9 +659,9 @@ const dbInit = {
 		try {
 			await c.env.db.prepare(`
 			  INSERT INTO setting (
-				register, receive, add_email, many_email, backup_db, backup_interval_days, backup_hour, title, auto_refresh, register_verify, add_email_verify
+				register, receive, add_email, attachment_limit, attachment_size_limit_mb, content_image_size_limit_mb, many_email, backup_db, backup_interval_days, backup_hour, title, auto_refresh, register_verify, add_email_verify
 			  )
-			  SELECT 0, 0, 0, 0, 1, 1, 0, 'Cloud Mail', 0, 1, 1
+			  SELECT 0, 0, 0, 1, NULL, NULL, 0, 1, 1, 0, 'Cloud Mail', 0, 1, 1
 			  WHERE NOT EXISTS (SELECT 1 FROM setting)
 			`).run();
 		} catch (e) {

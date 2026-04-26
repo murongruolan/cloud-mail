@@ -90,6 +90,10 @@ export const settingConst = {
 		OPEN: 0,
 		CLOSE: 1
 	},
+	attachmentLimit: {
+		OPEN: 0,
+		CLOSE: 1
+	},
 	backupDb: {
 		OPEN: 0,
 		CLOSE: 1

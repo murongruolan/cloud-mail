@@ -163,7 +163,15 @@ const emailService = {
 			attachments //附件
 		} = params;
 
-		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
+		const {
+			resendTokens,
+			r2Domain,
+			send,
+			domainList,
+			attachmentLimit,
+			attachmentSizeLimitMb,
+			contentImageSizeLimitMb
+		} = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
 
@@ -209,6 +217,12 @@ const emailService = {
 			}
 
 		}
+
+		this.validateAttachmentSizes(attachments, imageDataList, {
+			attachmentLimit,
+			attachmentSizeLimitMb,
+			contentImageSizeLimitMb
+		});
 
 		const accountRow = await accountService.selectById(c, accountId);
 
@@ -813,6 +827,51 @@ const emailService = {
 	async read(c, params, userId) {
 		const { emailIds } = params;
 		await orm(c).update(email).set({ unread: emailConst.unread.READ }).where(and(eq(email.userId, userId), inArray(email.emailId, emailIds)));
+	},
+
+	validateAttachmentSizes(attachments = [], imageDataList = [], settingData) {
+		if (settingData.attachmentLimit !== settingConst.attachmentLimit.OPEN) {
+			return;
+		}
+
+		const attachmentLimitBytes = this.toLimitBytes(settingData.attachmentSizeLimitMb);
+		const contentImageLimitBytes = this.toLimitBytes(settingData.contentImageSizeLimitMb);
+
+		if (attachmentLimitBytes > 0) {
+			for (const attachment of attachments) {
+				const size = attachment?.content ? this.base64Size(attachment.content) : Number(attachment?.size || 0);
+				if (size > attachmentLimitBytes) {
+					throw new BizError(t('attachmentSizeLimitExceeded', { msg: settingData.attachmentSizeLimitMb }), 400);
+				}
+			}
+		}
+
+		if (contentImageLimitBytes > 0) {
+			for (const image of imageDataList) {
+				if (!image?.buff) {
+					continue;
+				}
+
+				const size = image.buff.byteLength ?? image.buff.length ?? 0;
+				if (size > contentImageLimitBytes) {
+					throw new BizError(t('contentImageSizeLimitExceeded', { msg: settingData.contentImageSizeLimitMb }), 400);
+				}
+			}
+		}
+	},
+
+	toLimitBytes(limitMb) {
+		const value = Number(limitMb || 0);
+		if (!value) {
+			return 0;
+		}
+		return value * 1024 * 1024;
+	},
+
+	base64Size(base64) {
+		const clean = base64.includes(',') ? base64.split(',')[1] : base64;
+		const padding = (clean.match(/=*$/) || [''])[0].length;
+		return (clean.length * 3) / 4 - padding;
 	}
 };
 

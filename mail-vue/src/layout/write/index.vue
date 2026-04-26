@@ -101,7 +101,7 @@ import {emailSend} from "@/request/email.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
-import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
+import {base64Size, fileToBase64, formatBytes} from "@/utils/file-utils.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
@@ -280,6 +280,10 @@ function chooseFile() {
       const filename = file.name
       const contentType = file.type
 
+      if (!validateAttachmentFile(size, filename)) {
+        continue;
+      }
+
       const content = await fileToBase64(file)
       form.attachments.push({content, filename, size, contentType})
 
@@ -327,6 +331,10 @@ async function sendEmail() {
       type: 'error',
       plain: true,
     })
+    return
+  }
+
+  if (!validateSendLimits()) {
     return
   }
 
@@ -397,6 +405,81 @@ async function sendEmail() {
     percent.value = 0
     sending = false
   })
+}
+
+function validateSendLimits() {
+  if (settingStore.settings.attachmentLimit !== 0) {
+    return true
+  }
+
+  const attachmentLimitBytes = toLimitBytes(settingStore.settings.attachmentSizeLimitMb)
+  const contentImageLimitBytes = toLimitBytes(settingStore.settings.contentImageSizeLimitMb)
+
+  if (attachmentLimitBytes > 0) {
+    for (const attachment of form.attachments) {
+      if (attachment.size > attachmentLimitBytes) {
+        ElMessage({
+          message: t('attachmentSizeLimitExceededMsg', {msg: attachment.filename, limit: settingStore.settings.attachmentSizeLimitMb}),
+          type: 'error',
+          plain: true,
+        })
+        return false
+      }
+    }
+  }
+
+  if (contentImageLimitBytes > 0) {
+    const imageSizes = getLocalContentImageSizes(form.content)
+    if (imageSizes.some(size => size > contentImageLimitBytes)) {
+      ElMessage({
+        message: t('contentImageSizeLimitExceededMsg', {limit: settingStore.settings.contentImageSizeLimitMb}),
+        type: 'error',
+        plain: true,
+      })
+      return false
+    }
+  }
+
+  return true
+}
+
+function validateAttachmentFile(size, filename) {
+  if (settingStore.settings.attachmentLimit !== 0) {
+    return true
+  }
+
+  const attachmentLimitBytes = toLimitBytes(settingStore.settings.attachmentSizeLimitMb)
+
+  if (attachmentLimitBytes > 0 && size > attachmentLimitBytes) {
+    ElMessage({
+      message: t('attachmentSizeLimitExceededMsg', {msg: filename, limit: settingStore.settings.attachmentSizeLimitMb}),
+      type: 'error',
+      plain: true,
+    })
+    return false
+  }
+
+  return true
+}
+
+function getLocalContentImageSizes(content) {
+  const container = document.createElement('div')
+  container.innerHTML = content || ''
+  return Array.from(container.querySelectorAll('img'))
+      .map(img => img.getAttribute('src') || '')
+      .filter(src => src.startsWith('data:image'))
+      .map(src => {
+        const data = src.split(',')[1] || ''
+        return base64Size(data)
+      })
+}
+
+function toLimitBytes(limitMb) {
+  const value = Number(limitMb || 0)
+  if (!value) {
+    return 0
+  }
+  return value * 1024 * 1024
 }
 
 function addRecipientRecord() {

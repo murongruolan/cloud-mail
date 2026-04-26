@@ -185,8 +185,18 @@
                   </el-button>
                   <el-button class="opt-button" style="margin-top: 0" @click="openResendForm" size="small"
                              type="primary">
-                    <Icon icon="material-symbols:add-rounded" width="16" height="16"/>
+                   <Icon icon="material-symbols:add-rounded" width="16" height="16"/>
                   </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('attachmentLimitSetting') }}</span></div>
+                <div class="forward">
+                  <el-button class="opt-button attachment-limit-button" style="margin-top: 0" size="small" type="primary" @click="attachmentLimitShow = true">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.attachmentLimit"/>
                 </div>
               </div>
             </div>
@@ -764,7 +774,7 @@
         <form>
           <div class="backup-schedule-row">
             <span>{{ t('backupIntervalDays') }}</span>
-            <el-input-number v-model="backupIntervalDays" :min="1" :max="365"/>
+            <el-input-number class="backup-schedule-input" v-model="backupIntervalDays" :min="1" :max="365"/>
           </div>
           <div class="backup-schedule-row">
             <span>{{ t('backupHour') }}</span>
@@ -798,6 +808,30 @@
             <el-button :loading="clearBackupStorageLoading" @click="clearBackupStorage">{{ t('clear') }}</el-button>
             <el-button type="primary" :loading="settingLoading && !clearBackupStorageLoading" @click="saveBackupStorage">{{ t('save') }}</el-button>
           </div>
+        </form>
+      </el-dialog>
+      <el-dialog v-model="attachmentLimitShow" :title="t('attachmentLimitConfig')" width="340" @closed="resetAttachmentLimitForm">
+        <form>
+          <div class="attachment-limit-row">
+            <span>{{ t('contentImageSizeLimitMb') }}</span>
+            <el-input-number class="attachment-limit-input" v-model="attachmentLimitForm.contentImageSizeLimitMb" :min="0" :precision="0">
+              <template #suffix>
+                MB
+              </template>
+            </el-input-number>
+          </div>
+          <div class="attachment-limit-row">
+            <span>{{ t('attachmentSizeLimitMb') }}</span>
+            <el-input-number class="attachment-limit-input" v-model="attachmentLimitForm.attachmentSizeLimitMb" :min="0" :precision="0">
+              <template #suffix>
+                MB
+              </template>
+            </el-input-number>
+          </div>
+          <div class="limit-helper">
+            <span>{{ t('zeroMeansUnlimited') }}</span>
+          </div>
+          <el-button type="primary" :loading="settingLoading" @click="saveAttachmentLimit">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
       <el-dialog v-model="emailPrefixShow" :title="t('emailPrefix')"  @closed="resetEmailPrefix"  >
@@ -856,6 +890,7 @@ const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const backupCronShow = ref(false)
 const backupStorageShow = ref(false)
+const attachmentLimitShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
@@ -909,6 +944,11 @@ const backupStorage = reactive({
   s3AccessKey: '',
   s3SecretKey: '',
   forcePathStyle: 1
+})
+
+const attachmentLimitForm = reactive({
+  contentImageSizeLimitMb: 0,
+  attachmentSizeLimitMb: 0
 })
 
 const noticeForm = reactive({
@@ -976,6 +1016,7 @@ function getSettings() {
     regVerifyCount.value = setting.value.regVerifyCount
     backupIntervalDays.value = setting.value.backupIntervalDays
     backupHour.value = setting.value.backupHour
+    resetAttachmentLimitForm()
     resetNoticeForm()
     resetAddS3Form()
     resetBackupStorageForm()
@@ -1024,6 +1065,11 @@ function resetBackupStorageForm() {
   backupStorage.s3AccessKey = ''
   backupStorage.s3SecretKey = ''
   backupStorage.forcePathStyle = setting.value.backupForcePathStyle
+}
+
+function resetAttachmentLimitForm() {
+  attachmentLimitForm.contentImageSizeLimitMb = setting.value.contentImageSizeLimitMb ?? 0
+  attachmentLimitForm.attachmentSizeLimitMb = setting.value.attachmentSizeLimitMb ?? 0
 }
 
 const resendList = computed(() => {
@@ -1260,6 +1306,13 @@ function saveBackupStorage() {
   editSetting(form)
 }
 
+function saveAttachmentLimit() {
+  editSetting({
+    contentImageSizeLimitMb: attachmentLimitForm.contentImageSizeLimitMb,
+    attachmentSizeLimitMb: attachmentLimitForm.attachmentSizeLimitMb
+  })
+}
+
 function tgBotSave() {
   const form = {
     tgBotToken: tgBotToken.value,
@@ -1479,6 +1532,7 @@ function editSetting(settingForm, refreshStatus = true) {
     tgSettingShow.value = false
     backupCronShow.value = false
     backupStorageShow.value = false
+    attachmentLimitShow.value = false
     thirdEmailShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
@@ -1911,6 +1965,21 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .backup-hour-select {
   width: 110px;
+}
+
+.attachment-limit-button {
+  margin-right: 10px !important;
+}
+
+.attachment-limit-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.attachment-limit-input {
+  width: 100%;
 }
 
 .force-path-style {
