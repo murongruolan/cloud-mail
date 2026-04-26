@@ -5,6 +5,9 @@ import verifyRecordService from './service/verify-record-service';
 import emailService from './service/email-service';
 import kvObjService from './service/kv-obj-service';
 import oauthService from "./service/oauth-service";
+import dbBackupService from './service/db-backup-service';
+const DAILY_TASK_CRON = '0 16 * * *';
+const BACKUP_TASK_CRON = '0 * * * *';
 export default {
 	 async fetch(req, env, ctx) {
 
@@ -23,10 +26,22 @@ export default {
 		return env.assets.fetch(req);
 	},
 	email: email,
-	async scheduled(c, env, ctx) {
-		await verifyRecordService.clearRecord({ env })
-		await userService.resetDaySendCount({ env })
-		await emailService.completeReceiveAll({ env })
-		await oauthService.clearNoBindOathUser({ env })
+	async scheduled(controller, env, ctx) {
+		const c = { env };
+		if (controller.cron === BACKUP_TASK_CRON) {
+			await dbBackupService.runScheduledBackup(c, controller.scheduledTime);
+			return;
+		}
+
+		if (controller.cron === DAILY_TASK_CRON) {
+			await runDailyTasks(c);
+		}
 	},
 };
+
+async function runDailyTasks(c) {
+	await verifyRecordService.clearRecord(c);
+	await userService.resetDaySendCount(c);
+	await emailService.completeReceiveAll(c);
+	await oauthService.clearNoBindOathUser(c);
+}

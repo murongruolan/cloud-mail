@@ -337,6 +337,46 @@
           </div>
 
           <div class="settings-card">
+            <div class="card-title">{{ $t('backupData') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('backupSystemDatabase') }}</span>
+                  <el-tooltip effect="dark" :content="$t('backupRetentionDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.backupDb"/>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('backupTime') }}</span>
+                  <el-tooltip effect="dark" :content="$t('backupTimeDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ t('everyDaysAtHour', { days: setting.backupIntervalDays, hour: setting.backupHour }) }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openBackupCron">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('backupStorageConfig') }}</span></div>
+                <div class="forward">
+                  <el-button class="opt-button" size="small" type="primary" @click="backupStorageShow = true">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
             <div class="card-title">{{ $t('noticeTitle') }}</div>
             <div class="card-content">
               <div class="setting-item">
@@ -720,6 +760,46 @@
           </div>
         </form>
       </el-dialog>
+      <el-dialog v-model="backupCronShow" :title="t('backupTime')" width="340" @closed="resetBackupSchedule">
+        <form>
+          <div class="backup-schedule-row">
+            <span>{{ t('backupIntervalDays') }}</span>
+            <el-input-number v-model="backupIntervalDays" :min="1" :max="365"/>
+          </div>
+          <div class="backup-schedule-row">
+            <span>{{ t('backupHour') }}</span>
+            <el-select class="backup-hour-select" v-model="backupHour">
+              <el-option v-for="hour in backupHourOptions" :key="hour" :label="`${hour}:00`" :value="hour" />
+            </el-select>
+          </div>
+          <el-button type="primary" :loading="settingLoading" @click="saveBackupCron">{{ $t('save') }}</el-button>
+        </form>
+      </el-dialog>
+      <el-dialog v-model="backupStorageShow" :title="t('backupStorageConfig')" width="340" @closed="resetBackupStorageForm">
+        <form>
+          <el-input class="dialog-input" type="text" :placeholder="t('backupBucket')" v-model="backupStorage.bucket"/>
+          <el-input class="dialog-input" type="text" :placeholder="t('backupEndpoint')" v-model="backupStorage.endpoint"/>
+          <el-input class="dialog-input" type="text" :placeholder="t('backupRegion')" v-model="backupStorage.region"/>
+          <el-input class="dialog-input" type="text" :placeholder="setting.backupS3AccessKey || t('backupAccessKey')"
+                    v-model="backupStorage.s3AccessKey"/>
+          <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.backupS3SecretKey || t('backupSecretKey')"
+                    v-model="backupStorage.s3SecretKey"/>
+          <div class="force-path-style">
+            <div class="force-path-style-left">
+              <span>ForcePathStyle</span>
+              <el-tooltip effect="dark" :content="$t('forcePathStyleDesc')">
+                <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+              </el-tooltip>
+            </div>
+            <el-switch :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                       v-model="backupStorage.forcePathStyle"/>
+          </div>
+          <div class="s3-button">
+            <el-button :loading="clearBackupStorageLoading" @click="clearBackupStorage">{{ t('clear') }}</el-button>
+            <el-button type="primary" :loading="settingLoading && !clearBackupStorageLoading" @click="saveBackupStorage">{{ t('save') }}</el-button>
+          </div>
+        </form>
+      </el-dialog>
       <el-dialog v-model="emailPrefixShow" :title="t('emailPrefix')"  @closed="resetEmailPrefix"  >
         <div class="email-prefix">
           <div>{{ t('atLeast') }}</div>
@@ -774,6 +854,8 @@ const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
+const backupCronShow = ref(false)
+const backupStorageShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
@@ -786,6 +868,7 @@ const {settings: setting} = storeToRefs(settingStore);
 const editTitle = ref('')
 const settingLoading = ref(false)
 const clearS3Loading = ref(false)
+const clearBackupStorageLoading = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
@@ -795,6 +878,8 @@ let backgroundFile = {}
 const showSetBackground = ref(false)
 let regVerifyCount = ref(1)
 let addVerifyCount = ref(1)
+const backupIntervalDays = ref(1)
+const backupHour = ref(0)
 let backup = '{}'
 const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
@@ -809,6 +894,15 @@ const turnstileForm = reactive({
 })
 
 const s3 = reactive({
+  bucket: '',
+  endpoint: '',
+  region: '',
+  s3AccessKey: '',
+  s3SecretKey: '',
+  forcePathStyle: 1
+})
+
+const backupStorage = reactive({
   bucket: '',
   endpoint: '',
   region: '',
@@ -842,6 +936,8 @@ const authRefreshOptions = computed(() => [
   {label: '15s', value: 15},
   {label: '20s', value: 20},
 ])
+
+const backupHourOptions = Array.from({ length: 24 }, (_, index) => index)
 
 const tgChatId = ref([])
 const customDomain = ref('')
@@ -878,8 +974,11 @@ function getSettings() {
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
+    backupIntervalDays.value = setting.value.backupIntervalDays
+    backupHour.value = setting.value.backupHour
     resetNoticeForm()
     resetAddS3Form()
+    resetBackupStorageForm()
     resetEmailPrefix()
   })
 }
@@ -899,6 +998,16 @@ function openRegVerifyCount() {
   regVerifyCountShow.value = true
 }
 
+function openBackupCron() {
+  if (settingLoading.value) return
+  backupCronShow.value = true
+}
+
+function resetBackupSchedule() {
+  backupIntervalDays.value = setting.value.backupIntervalDays
+  backupHour.value = setting.value.backupHour
+}
+
 function resetAddS3Form() {
   s3.bucket = setting.value.bucket
   s3.endpoint = setting.value.endpoint
@@ -906,6 +1015,15 @@ function resetAddS3Form() {
   s3.s3AccessKey = ''
   s3.s3SecretKey = ''
   s3.forcePathStyle = setting.value.forcePathStyle
+}
+
+function resetBackupStorageForm() {
+  backupStorage.bucket = setting.value.backupBucket
+  backupStorage.endpoint = setting.value.backupEndpoint
+  backupStorage.region = setting.value.backupRegion
+  backupStorage.s3AccessKey = ''
+  backupStorage.s3SecretKey = ''
+  backupStorage.forcePathStyle = setting.value.backupForcePathStyle
 }
 
 const resendList = computed(() => {
@@ -1114,6 +1232,34 @@ function saveS3() {
   editSetting(form)
 }
 
+function clearBackupStorage() {
+  const form = {
+    backupBucket: '',
+    backupEndpoint: '',
+    backupRegion: '',
+    backupS3AccessKey: '',
+    backupS3SecretKey: '',
+    backupForcePathStyle: 1
+  }
+  clearBackupStorageLoading.value = true
+  editSetting(form)
+}
+
+function saveBackupStorage() {
+
+  const form = {
+    backupBucket: backupStorage.bucket,
+    backupEndpoint: backupStorage.endpoint,
+    backupRegion: backupStorage.region,
+    backupForcePathStyle: backupStorage.forcePathStyle
+  }
+
+  if (backupStorage.s3AccessKey) form.backupS3AccessKey = backupStorage.s3AccessKey
+  if (backupStorage.s3SecretKey) form.backupS3SecretKey = backupStorage.s3SecretKey
+
+  editSetting(form)
+}
+
 function tgBotSave() {
   const form = {
     tgBotToken: tgBotToken.value,
@@ -1190,6 +1336,13 @@ function saveTurnstileKey() {
   settingForm.siteKey = turnstileForm.siteKey
   settingForm.secretKey = turnstileForm.secretKey
   editSetting(settingForm)
+}
+
+function saveBackupCron() {
+  editSetting({
+    backupIntervalDays: backupIntervalDays.value || 1,
+    backupHour: backupHour.value ?? 0
+  })
 }
 
 async function saveBackground() {
@@ -1285,6 +1438,8 @@ function change(e) {
   delete settingForm.secretKey
   delete settingForm.s3AccessKey
   delete settingForm.s3SecretKey
+  delete settingForm.backupS3AccessKey
+  delete settingForm.backupS3SecretKey
   delete settingForm.resendTokens
   editSetting(settingForm, false)
 }
@@ -1322,6 +1477,8 @@ function editSetting(settingForm, refreshStatus = true) {
     resendTokenFormShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
+    backupCronShow.value = false
+    backupStorageShow.value = false
     thirdEmailShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
@@ -1335,6 +1492,7 @@ function editSetting(settingForm, refreshStatus = true) {
   }).finally(() => {
     settingLoading.value = false
     clearS3Loading.value = false
+    clearBackupStorageLoading.value = false
   })
 }
 </script>
@@ -1741,6 +1899,18 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .dialog-input {
   margin-bottom: 15px;
+}
+
+.backup-schedule-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.backup-hour-select {
+  width: 110px;
 }
 
 .force-path-style {

@@ -30,8 +30,31 @@ const dbInit = {
 		await this.v2_9DB(c);
 		await this.v2_10DB(c);
 		await this.v2_11DB(c);
+		await this.v2_12DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v2_12DB(c) {
+		const sqlList = [
+			`ALTER TABLE setting ADD COLUMN backup_db INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE setting ADD COLUMN backup_interval_days INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE setting ADD COLUMN backup_hour INTEGER NOT NULL DEFAULT 0;`,
+			`ALTER TABLE setting ADD COLUMN backup_bucket TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN backup_region TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN backup_endpoint TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN backup_s3_access_key TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN backup_s3_secret_key TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN backup_force_path_style INTEGER NOT NULL DEFAULT 1;`
+		];
+
+		for (const sql of sqlList) {
+			try {
+				await c.env.db.prepare(sql).run();
+			} catch (e) {
+				console.warn(`璺宠繃瀛楁锛?{e.message}`);
+			}
+		}
 	},
 
 	async v2_11DB(c) {
@@ -589,19 +612,28 @@ const dbInit = {
 			receive INTEGER NOT NULL,
 			add_email INTEGER NOT NULL,
 			many_email INTEGER NOT NULL,
+			backup_db INTEGER NOT NULL DEFAULT 1,
+			backup_interval_days INTEGER NOT NULL DEFAULT 1,
+			backup_hour INTEGER NOT NULL DEFAULT 0,
 			title TEXT NOT NULL,
 			auto_refresh INTEGER NOT NULL,
 			register_verify INTEGER NOT NULL,
-			add_email_verify INTEGER NOT NULL
+			add_email_verify INTEGER NOT NULL,
+			backup_bucket TEXT NOT NULL DEFAULT '',
+			backup_region TEXT NOT NULL DEFAULT '',
+			backup_endpoint TEXT NOT NULL DEFAULT '',
+			backup_s3_access_key TEXT NOT NULL DEFAULT '',
+			backup_s3_secret_key TEXT NOT NULL DEFAULT '',
+			backup_force_path_style INTEGER NOT NULL DEFAULT 1
 		  )
 		`).run();
 
 		try {
 			await c.env.db.prepare(`
 			  INSERT INTO setting (
-				register, receive, add_email, many_email, title, auto_refresh, register_verify, add_email_verify
+				register, receive, add_email, many_email, backup_db, backup_interval_days, backup_hour, title, auto_refresh, register_verify, add_email_verify
 			  )
-			  SELECT 0, 0, 0, 0, 'Cloud Mail', 0, 1, 1
+			  SELECT 0, 0, 0, 0, 1, 1, 0, 'Cloud Mail', 0, 1, 1
 			  WHERE NOT EXISTS (SELECT 1 FROM setting)
 			`).run();
 		} catch (e) {

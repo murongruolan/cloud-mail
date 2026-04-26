@@ -102,6 +102,8 @@ const settingService = {
 
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
 		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
+		settingRow.backupS3AccessKey = settingRow.backupS3AccessKey ? `${settingRow.backupS3AccessKey.slice(0, 12)}******` : null;
+		settingRow.backupS3SecretKey = settingRow.backupS3SecretKey ? `${settingRow.backupS3SecretKey.slice(0, 12)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
 
 		let regVerifyOpen = false
@@ -136,6 +138,7 @@ const settingService = {
 		}
 
 		this.validateTurnstileConfig({ ...settingData, ...params });
+		this.validateBackupConfig({ ...settingData, ...params });
 
 		params.resendTokens = JSON.stringify(resendTokens);
 		await orm(c).update(setting).set({ ...params }).returning().get();
@@ -156,6 +159,31 @@ const settingService = {
 
 		if (!settingData.siteKey?.trim() || !settingData.secretKey?.trim()) {
 			throw new BizError(t('turnstileKeyNotConfig'), 400);
+		}
+	},
+
+	validateBackupConfig(settingData) {
+		if (settingData.backupDb !== settingConst.backupDb.OPEN) {
+			return;
+		}
+
+		if (!Number.isInteger(Number(settingData.backupIntervalDays)) || Number(settingData.backupIntervalDays) < 1) {
+			throw new BizError(t('backupIntervalInvalid'), 400);
+		}
+
+		if (!Number.isInteger(Number(settingData.backupHour)) || Number(settingData.backupHour) < 0 || Number(settingData.backupHour) > 23) {
+			throw new BizError(t('backupHourInvalid'), 400);
+		}
+
+		const hasBackupStorage = !!(
+			settingData.backupBucket?.trim() &&
+			settingData.backupEndpoint?.trim() &&
+			settingData.backupS3AccessKey?.trim() &&
+			settingData.backupS3SecretKey?.trim()
+		);
+
+		if (!hasBackupStorage) {
+			throw new BizError(t('backupStorageNotConfig'), 400);
 		}
 	},
 
@@ -217,6 +245,9 @@ const settingService = {
 			addEmailVerify: settingRow.addEmailVerify,
 			registerVerify: settingRow.registerVerify,
 			loginVerify: settingRow.loginVerify,
+			backupDb: settingRow.backupDb,
+			backupIntervalDays: settingRow.backupIntervalDays,
+			backupHour: settingRow.backupHour,
 			send: settingRow.send,
 			r2Domain: settingRow.r2Domain,
 			siteKey: settingRow.siteKey,

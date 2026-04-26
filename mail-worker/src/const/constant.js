@@ -5,6 +5,7 @@ const constant = {
 	TOKEN_EXPIRE: 60 * 60 * 24 * 30,
 	ATTACHMENT_PREFIX: 'attachments/',
 	BACKGROUND_PREFIX: 'static/background/',
+	DB_BACKUP_PREFIX: 'db-backups/',
 	ADMIN_ROLE: {
 		name: 'admin',
 		sendCount: 0,
