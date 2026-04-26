@@ -17,11 +17,12 @@
           <el-input :class="settingStore.settings.loginDomain === 0 ? 'email-input' : ''" v-model="form.email"
                     type="text" :placeholder="$t('emailAccount')" autocomplete="off">
             <template #append v-if="settingStore.settings.loginDomain === 0">
-              <div @click.stop="openSelect">
+              <div class="domain-select-trigger" @click.stop="openSelect">
                 <el-select
                     v-if="show === 'login'"
                     ref="mySelect"
                     v-model="suffix"
+                    tabindex="-1"
                     :placeholder="$t('select')"
                     class="select"
                 >
@@ -60,11 +61,12 @@
           <el-input class="email-input" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
                     autocomplete="off">
             <template #append>
-              <div @click.stop="openSelect">
+              <div class="domain-select-trigger" @click.stop="openSelect">
                 <el-select
                     v-if="show !== 'login'"
                     ref="mySelect"
                     v-model="suffix"
+                    tabindex="-1"
                     :placeholder="$t('select')"
                     class="select"
                 >
@@ -118,10 +120,11 @@
       <div class="bind-container">
         <el-input v-model="bindForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
           <template #append>
-            <div @click.stop="openSelect">
+            <div class="domain-select-trigger" @click.stop="openSelect">
               <el-select
                   ref="mySelect"
                   v-model="suffix"
+                  tabindex="-1"
                   :placeholder="$t('select')"
                   class="select"
               >
@@ -754,6 +757,10 @@ function submitRegister() {
 .setting-icon {
   position: relative;
   top: 6px;
+}
+
+.domain-select-trigger {
+  cursor: pointer;
 }
 
 .github {
