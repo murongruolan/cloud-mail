@@ -4,7 +4,6 @@ import jwtUtils from '../utils/jwt-utils';
 import KvConst from '../const/kv-const';
 import dayjs from 'dayjs';
 import userService from '../service/user-service';
-import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
 
@@ -45,6 +44,13 @@ const requirePerms = [
 	'/setting/query',
 	'/setting/runBackup',
 	'/setting/backupStatus',
+	'/subAdmin/list',
+	'/subAdmin/candidateList',
+	'/subAdmin/add',
+	'/subAdmin/setStatus',
+	'/subAdmin/setRemark',
+	'/subAdmin/delete',
+	'/adminLog/list',
 	'/user/delete',
 	'/user/setPwd',
 	'/user/setStatus',
@@ -84,6 +90,9 @@ const premKey = {
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
 	'setting:query': ['/setting/query', '/setting/backupStatus'],
 	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground', '/setting/runBackup'],
+	'sub-admin:query': ['/subAdmin/list', '/subAdmin/candidateList'],
+	'sub-admin:set': ['/subAdmin/add', '/subAdmin/setStatus', '/subAdmin/setRemark', '/subAdmin/delete'],
+	'admin-log:query': ['/adminLog/list'],
 	'analysis:query': ['/analysis/echarts'],
 	'reg-key:add': ['/regKey/add'],
 	'reg-key:query': ['/regKey/list','/regKey/history'],
@@ -138,7 +147,7 @@ app.use('*', async (c, next) => {
 
 	if (permIndex > -1) {
 
-		const permKeys = await permService.userPermKeys(c, authInfo.user.userId);
+		const permKeys = await userService.effectivePermKeys(c, authInfo.user.userId, authInfo.user.email);
 
 		const userPaths = permKeyToPaths(permKeys);
 

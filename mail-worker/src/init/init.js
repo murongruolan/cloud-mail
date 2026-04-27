@@ -39,9 +39,48 @@ const dbInit = {
 		await this.v2_11DB(c);
 		await this.v2_12DB(c);
 		await this.v2_13DB(c);
+		await this.v2_14DB(c);
 		await settingService.refresh(c);
 		await c.env.kv.put(KvConst.IS_INIT, 'true');
 		return c.text('success');
+	},
+
+	async v2_14DB(c) {
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS sub_admin (
+					sub_admin_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					status INTEGER NOT NULL DEFAULT 0,
+					remark TEXT NOT NULL DEFAULT '',
+					create_by INTEGER NOT NULL,
+					create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+				)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过表：${e.message}`);
+		}
+
+		try {
+			await c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sub_admin_user_id ON sub_admin(user_id)`).run();
+		} catch (e) {
+			console.warn(`跳过索引：${e.message}`);
+		}
+
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS admin_action_log (
+					log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					email TEXT NOT NULL,
+					admin_type TEXT NOT NULL,
+					action TEXT NOT NULL,
+					create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+				)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过表：${e.message}`);
+		}
 	},
 
 	async v2_13DB(c) {

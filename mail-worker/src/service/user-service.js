@@ -18,8 +18,48 @@ import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
 import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
+import subAdminService from './sub-admin-service';
 
 const userService = {
+
+	async effectivePermKeys(c, userId, userEmail = null) {
+
+		let email = userEmail;
+
+		if (!email) {
+			const userRow = await userService.selectById(c, userId);
+			if (!userRow) {
+				return [];
+			}
+			email = userRow.email;
+		}
+
+		const permKeys = email === c.env.admin ? ['*'] : await permService.userPermKeys(c, userId);
+		const subAdminRow = email === c.env.admin ? null : await subAdminService.selectByUserId(c, userId);
+		let mergedPermKeys = [...permKeys];
+
+		if (subAdminRow) {
+			const blockedPerms = new Set([
+				'role:query',
+				'role:add',
+				'role:set',
+				'role:delete',
+				'setting:query',
+				'setting:set',
+				'sub-admin:query',
+				'sub-admin:set',
+				'admin-log:query'
+			]);
+
+			mergedPermKeys = mergedPermKeys.filter(key => !blockedPerms.has(key));
+		}
+
+		if (subAdminRow && subAdminRow.status === 0) {
+			mergedPermKeys = [...new Set([...mergedPermKeys, ...constant.SUB_ADMIN_PERMS])];
+		}
+
+		return mergedPermKeys;
+	},
 
 	async loginUserInfo(c, userId) {
 
@@ -29,11 +69,13 @@ const userService = {
 			throw new BizError(t('authExpired'), 401);
 		}
 
-		const [account, roleRow, permKeys] = await Promise.all([
+		const [account, roleRow, mergedPermKeys] = await Promise.all([
 			accountService.selectByEmailIncludeDel(c, userRow.email),
 			roleService.selectById(c, userRow.type),
-			userRow.email === c.env.admin ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
+			userService.effectivePermKeys(c, userId, userRow.email)
 		]);
+
+		const subAdminRow = userRow.email === c.env.admin ? null : await subAdminService.selectByUserId(c, userId);
 
 		const user = {};
 		user.userId = userRow.userId;
@@ -41,9 +83,11 @@ const userService = {
 		user.email = userRow.email;
 		user.account = account;
 		user.name = account.name;
-		user.permKeys = permKeys;
+		user.permKeys = mergedPermKeys;
 		user.role = roleRow;
 		user.type = userRow.type;
+		user.isSubAdmin = !!subAdminRow;
+		user.subAdminStatus = subAdminRow?.status ?? null;
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE
@@ -104,6 +148,7 @@ const userService = {
 		userIds = userIds.split(',').map(Number);
 		await accountService.physicsDeleteByUserIds(c, userIds);
 		await oauthService.deleteByUserIds(c, userIds);
+		await subAdminService.deleteByUserIds(c, userIds);
 		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();
 	},
 

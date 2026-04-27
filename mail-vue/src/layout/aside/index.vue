@@ -31,7 +31,7 @@
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('settings')}}</span>
         </el-menu-item>
-        <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','analysis:query','reg-key:query']">
+        <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','analysis:query','reg-key:query','sub-admin:query','admin-log:query']">
           <div>{{$t('manage')}}</div>
         </div>
         <el-menu-item @click="router.push({name: 'analysis'})" index="analysis" v-perm="'analysis:query'"
@@ -63,6 +63,16 @@
                       :class="route.meta.name === 'sys-setting' ? 'choose-item' : ''">
           <Icon icon="eos-icons:system-ok-outlined" width="18" height="18" style="margin-left: 2px" />
           <span class="menu-name" style="margin-left: 22px">{{$t('SystemSettings')}}</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'sub-admin'})" index="sub-admin" v-perm="'sub-admin:query'"
+                      :class="route.meta.name === 'sub-admin' ? 'choose-item' : ''">
+          <Icon icon="mdi:account-tie-outline" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 20px">{{$t('subAdminList')}}</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'admin-log'})" index="admin-log" v-perm="'admin-log:query'"
+                      :class="route.meta.name === 'admin-log' ? 'choose-item' : ''">
+          <Icon icon="fluent:document-text-20-regular" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 20px">{{$t('operationLogs')}}</span>
         </el-menu-item>
       </el-menu>
     </div>

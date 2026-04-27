@@ -98,9 +98,8 @@
                     :disabled="isRemarkDisabled(props.row)"
                     @click="openSetRemark(props.row)"
                 >{{ $t('remark') }}</el-button>
-                <el-button size="small" type="primary" disabled v-if="(props.row.type === 0 && userStore.user.type !== 0)" >{{ $t('action') }}</el-button>
-                <el-dropdown v-else >
-                  <el-button size="small" type="primary">{{ $t('action') }}</el-button>
+                <el-dropdown :disabled="isActionDisabled(props.row)">
+                  <el-button size="small" type="primary" :disabled="isActionDisabled(props.row)">{{ $t('action') }}</el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item @click="openSetPwd(props.row)" >{{ $t('chgPwd') }}</el-dropdown-item>
@@ -982,6 +981,10 @@ function canSetRemark() {
 
 function isRemarkDisabled(user) {
   return !canSetRemark() || (user.type === 0 && userStore.user.type !== 0)
+}
+
+function isActionDisabled(user) {
+  return user.type === 0 && userStore.user.type !== 0
 }
 
 function search() {

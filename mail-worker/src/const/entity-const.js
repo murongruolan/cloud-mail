@@ -7,6 +7,17 @@ export const userConst = {
 	}
 }
 
+export const subAdminConst = {
+	status: {
+		NORMAL: 0,
+		DISABLED: 1
+	},
+	type: {
+		MAIN: 'main',
+		SUB: 'sub'
+	}
+}
+
 export const accountConst = {
 	allReceive: {
 		CLOSE: 0,
