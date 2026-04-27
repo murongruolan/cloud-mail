@@ -30,6 +30,10 @@ export function userAdd(form) {
     return http.post('/user/add', form)
 }
 
+export function userBatchAdd(form) {
+    return http.post('/user/batchAdd', form)
+}
+
 export function userRestSendCount(userId) {
     return http.put('/user/resetSendCount', {userId})
 }
