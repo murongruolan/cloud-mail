@@ -19,3 +19,11 @@ export function setBackground(background) {
 export function deleteBackground() {
     return http.delete('/setting/deleteBackground')
 }
+
+export function runBackup() {
+    return http.post('/setting/runBackup')
+}
+
+export function backupStatus() {
+    return http.get('/setting/backupStatus', { noMsg: true })
+}
