@@ -182,22 +182,36 @@ const dbBackupService = {
 
 	async exportAllTables(c, backupTime) {
 		const { results } = await c.env.db.prepare(
-			`SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`
+			`SELECT name, sql
+			 FROM sqlite_master
+			 WHERE type = 'table'
+			   AND name NOT LIKE 'sqlite_%'
+			   AND name NOT LIKE '_cf_%'
+			 ORDER BY name`
 		).all();
 
 		const tables = {};
+		const skippedTables = [];
 
 		for (const table of results) {
 			if (!/^[A-Za-z0-9_-]+$/.test(table.name)) {
 				continue;
 			}
 
-			const tableResult = await c.env.db.prepare(`SELECT * FROM "${table.name}"`).all();
+			try {
+				const tableResult = await c.env.db.prepare(`SELECT * FROM "${table.name}"`).all();
 
-			tables[table.name] = {
-				schema: table.sql,
-				rows: tableResult.results || []
-			};
+				tables[table.name] = {
+					schema: table.sql,
+					rows: tableResult.results || []
+				};
+			} catch (error) {
+				console.warn(`Skip backup table ${table.name}: ${error.message}`);
+				skippedTables.push({
+					name: table.name,
+					message: error.message
+				});
+			}
 		}
 
 		return {
@@ -205,7 +219,8 @@ const dbBackupService = {
 			timeZone: BACKUP_TIME_ZONE,
 			type: 'cloud-mail-db-backup',
 			version: 1,
-			tables
+			tables,
+			skippedTables
 		};
 	},
 
