@@ -849,11 +849,11 @@
           </div>
           <div class="backup-status-row" v-if="backupStatusData.startedAt">
             <span>Started</span>
-            <span class="backup-status-text">{{ backupStatusData.startedAt }}</span>
+            <span class="backup-status-text">{{ formatBackupTime(backupStatusData.startedAt) }}</span>
           </div>
           <div class="backup-status-row" v-if="backupStatusData.finishedAt">
             <span>Finished</span>
-            <span class="backup-status-text">{{ backupStatusData.finishedAt }}</span>
+            <span class="backup-status-text">{{ formatBackupTime(backupStatusData.finishedAt) }}</span>
           </div>
           <div class="backup-status-details" v-if="backupStatusData.details">
             <span>{{ t('backupDetails') }}</span>
@@ -1043,6 +1043,37 @@ const backupStatusTagType = computed(() => {
   if (backupStatusData.status === 'running') return 'warning'
   return 'info'
 })
+
+function formatBackupTime(time) {
+  if (!time) {
+    return '-'
+  }
+
+  const date = new Date(time)
+
+  if (Number.isNaN(date.getTime())) {
+    return time
+  }
+
+  const formatter = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+
+  const parts = Object.fromEntries(
+      formatter.formatToParts(date)
+          .filter(part => part.type !== 'literal')
+          .map(part => [part.type, part.value])
+  )
+
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+}
 
 const tgChatId = ref([])
 const customDomain = ref('')
