@@ -103,6 +103,19 @@ const accountService = {
 		return orm(c).select().from(account).where(sql`${account.email} COLLATE NOCASE = ${email}`).get();
 	},
 
+	async selectByEmailsIncludeDel(c, emails) {
+		if (!emails?.length) {
+			return [];
+		}
+		const normalizedEmails = emails.map(email => email.toLowerCase());
+		const placeholders = normalizedEmails.map(() => '?').join(',');
+		const { results } = await c.env.db
+			.prepare(`SELECT * FROM account WHERE lower(email) IN (${placeholders})`)
+			.bind(...normalizedEmails)
+			.all();
+		return results || [];
+	},
+
 	list(c, params, userId) {
 
 		let { accountId, size, lastSort } = params;

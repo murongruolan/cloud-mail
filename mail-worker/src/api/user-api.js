@@ -54,6 +54,13 @@ app.post('/user/add', async (c) => {
 	return c.json(result.ok());
 });
 
+app.post('/user/batchAdd', async (c) => {
+	const actor = await adminScopeService.assertManageAccess(c);
+	const data = await userService.batchAdd(c, await c.req.json());
+	await adminActionLogService.log(c, actor, 'user.batchAdd');
+	return c.json(result.ok(data));
+});
+
 app.put('/user/resetSendCount', async (c) => {
 	const actor = await adminScopeService.assertManageAccess(c);
 	await userService.resetSendCount(c, await c.req.json());

@@ -6,28 +6,43 @@
        <a href="/README.md" style="margin-left: 5px">简体中文</a> | English 
     </p>
     <p align="center">
-        <a href="https://github.com/maillab/cloud-mail/tree/main?tab=MIT-1-ov-file" target="_blank" >
+        <a href="https://github.com/murongruolan/cloud-mail/blob/main/LICENSE" target="_blank" >
             <img src="https://img.shields.io/badge/license-MIT-green" />
         </a>    
-        <a href="https://github.com/maillab/cloud-mail/releases" target="_blank" >
-            <img src="https://img.shields.io/github/v/release/maillab/cloud-mail" alt="releases" />
+        <a href="https://github.com/murongruolan/cloud-mail/tags" target="_blank" >
+            <img src="https://img.shields.io/github/v/tag/murongruolan/cloud-mail" alt="releases" />
         </a>  
-        <a href="https://github.com/maillab/cloud-mail/issues" >
-            <img src="https://img.shields.io/github/issues/maillab/cloud-mail" alt="issues" />
+        <a href="https://github.com/murongruolan/cloud-mail/issues" >
+            <img src="https://img.shields.io/github/issues/murongruolan/cloud-mail" alt="issues" />
         </a>  
-        <a href="https://github.com/maillab/cloud-mail/stargazers" target="_blank">
-            <img src="https://img.shields.io/github/stars/maillab/cloud-mail" alt="stargazers" />
+        <a href="https://github.com/murongruolan/cloud-mail/stargazers" target="_blank">
+            <img src="https://img.shields.io/github/stars/murongruolan/cloud-mail" alt="stargazers" />
         </a>  
-        <a href="https://github.com/maillab/cloud-mail/forks" target="_blank" >
-            <img src="https://img.shields.io/github/forks/maillab/cloud-mail" alt="forks" />
-        </a>
-    </p>
-    <p align="center">
-        <a href="https://trendshift.io/repositories/14418" target="_blank" >
-            <img src="https://trendshift.io/api/badge/repositories/14418" alt="trendshift" >
+        <a href="https://github.com/murongruolan/cloud-mail/forks" target="_blank" >
+            <img src="https://img.shields.io/github/forks/murongruolan/cloud-mail" alt="forks" />
         </a>
     </p>
 </p>
+
+---
+
+## About This Fork
+This is an independent fork of **[maillab/cloud-mail](https://github.com/maillab/cloud-mail) v2.9.0**, fully compliant with the original MIT License.
+
+### Branch Management
+- `main` branch: Kept in sync with the original upstream repository, no custom modifications
+- `developer` branch: Daily development branch, all new features and bug fixes are iterated here
+- `release` branch: Production-ready branch, only merged with tested stable code, corresponding to tagged releases
+
+### Key Changes in This Fork
+**[2.9.0-murong.1](https://github.com/murongruolan/cloud-mail/tags)**
+- Management Enhancements: Added a sub-admin system and an operation log page, allowing the main admin to add, remark, disable, and remove sub-admins while recording privileged mutating actions separately
+- User Administration Improvements: Added user remarks, batch user creation, and better narrow-screen behavior in the user list, with extra safeguards around the super admin row
+- Security and Access Control: Added login Turnstile verification, automatic login continuation after verification, idempotent initialization protection, attachment/body-image size limits, and smoother keyboard interaction on login/register pages
+- Database Backup Features: Added a database backup module with separate object storage settings, scheduled backups, manual backup, status feedback, detailed failure reporting, and automatic retention of only the latest 5 backups
+- Deployment and Stability Fixes: Improved the GitHub Actions initialization flow, fixed backup failures caused by querying D1 internal tables, normalized backup timestamps to Asia/Shanghai display
+
+---
 
 ## Description
 With only one domain, you can create multiple different email addresses, similar to major email platforms. This project can be deployed on Cloudflare Workers to reduce server costs and build your own email service.
@@ -132,15 +147,17 @@ cloud-mail
 ```
 
 ## Support
-
+Original project sponsorship entrance
 <a href="https://doc.skymail.ink/support.html">
-<img width="170px" src="./doc/images/support.png" alt="">
+<img width="170px" src="./doc/images/support.png" alt="Support the original project">
 </a>
 
 ## License
 
-This project is licensed under the [MIT](LICENSE) license.
+- This project is forked from the original project under the **MIT License**. The full copyright notice of the original project can be found at [Original Project LICENSE](https://github.com/maillab/cloud-mail/tree/main?tab=MIT-1-ov-file).
+- The code modified and developed in this fork is also open sourced under the **MIT License**. See the [LICENSE](LICENSE) file for full details.
 
 ## Communication
 
-[Telegram](https://t.me/cloud_mail_tg)
+- Original Project Official Group: [Telegram](https://t.me/cloud_mail_tg)
+- Issues for this fork: [Repo Issues](https://github.com/murongruolan/cloud-mail/issues)

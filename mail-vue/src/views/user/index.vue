@@ -2,6 +2,7 @@
   <div class="user-box">
     <div class="header-actions">
       <Icon class="icon" icon="ion:add-outline" width="23" height="23" @click="openAdd"/>
+      <el-button size="small" type="primary" plain @click="openBatchAdd">{{ $t('batchAddUser') }}</el-button>
       <div class="search">
         <el-input
             v-model="params.email"
@@ -218,6 +219,94 @@
         </el-button>
       </div>
     </el-dialog>
+    <el-dialog class="batch-dialog" v-model="showBatchAdd" :title="$t('batchAddUser')">
+      <div class="batch-dialog-box">
+        <div class="batch-add-desc">{{ batchAddDescText }}</div>
+        <div class="batch-add-tools">
+          <div class="batch-tools-row">
+            <el-input
+                class="batch-tool-count"
+                v-model="batchGenerateForm.count"
+                :placeholder="$t('batchGenerateCount')"
+                inputmode="numeric"
+            />
+            <el-select
+                class="batch-tool-domain"
+                v-model="batchGenerateForm.domain"
+                clearable
+                :placeholder="$t('batchGenerateDomain')"
+            >
+              <el-option
+                  v-for="item in domainList"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+              />
+            </el-select>
+          </div>
+          <div class="batch-tools-row batch-tools-row-bottom">
+            <el-input
+                class="batch-tool-remark"
+                v-model="batchGenerateForm.remark"
+                :maxlength="100"
+                :placeholder="$t('batchGenerateRemark')"
+            />
+            <el-select
+                class="batch-tool-role"
+                v-model="batchGenerateForm.roleName"
+                clearable
+                :placeholder="$t('batchGenerateRole')"
+            >
+              <el-option
+                  v-for="item in roleList"
+                  :key="item.roleId"
+                  :label="item.name"
+                  :value="item.name"
+              />
+            </el-select>
+            <el-button class="batch-tool-submit" type="primary" plain @click="appendBatchTemplate">{{ $t('batchGenerateSubmit') }}</el-button>
+          </div>
+        </div>
+        <el-input
+            v-model="batchAddForm.content"
+            type="textarea"
+            :rows="10"
+            :placeholder="batchAddDescText"
+        />
+        <div class="batch-add-count">{{ batchAddCountText }}</div>
+        <el-button class="btn" type="primary" @click="submitBatchAdd" :loading="batchAddLoading">
+          {{ $t('add') }}
+        </el-button>
+      </div>
+    </el-dialog>
+    <el-dialog class="batch-result-dialog" v-model="batchAddResultShow" :title="$t('batchAddResult')">
+      <div class="batch-result-box">
+        <div class="batch-result-row">
+          <span class="batch-result-label">{{ $t('batchAddSubmittedCount') }}</span>
+          <span class="batch-result-text">{{ batchAddResult.totalCount }}</span>
+        </div>
+        <div class="batch-result-row">
+          <span class="batch-result-label">{{ $t('batchAddSuccessCount') }}</span>
+          <span class="batch-result-text">{{ batchAddResult.successCount }}</span>
+        </div>
+        <div class="batch-result-row">
+          <span class="batch-result-label">{{ $t('batchAddFailCount') }}</span>
+          <span class="batch-result-text">{{ batchAddResult.failCount }}</span>
+        </div>
+        <div class="batch-result-failures" v-if="batchAddResult.failCount > 0">
+          <span class="batch-result-label">{{ $t('batchAddFailedDetails') }}</span>
+          <div class="batch-result-failure-list">
+            <div
+                class="batch-result-failure-item"
+                v-for="item in batchAddResult.failedItems"
+                :key="`${item.line}-${item.email}-${item.reason}`"
+            >
+              {{ formatBatchAddFailure(item) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
     <el-dialog class="account-dialog" v-model="accountShow" :title="t('userAccount')" @closed="resetAccountList" >
       <el-table :data="accountList" style="height: 480px" v-loading="accountLoading" element-loading-background="transparent" :empty-text="accountLoading ? '' : null">
         <el-table-column property="email" :label="t('emailAccount')" >
@@ -396,7 +485,7 @@
 </template>
 
 <script setup>
-import {defineOptions, h, reactive, ref, watch} from 'vue'
+import {computed, defineOptions, h, reactive, ref, watch} from 'vue'
 import {
   userList,
   userDelete,
@@ -405,6 +494,7 @@ import {
   userSetType,
   userSetRemark,
   userAdd,
+  userBatchAdd,
   userRestSendCount,
   userRestore,
   userDeleteAccount,
@@ -477,6 +567,16 @@ const addForm = reactive({
   type: null,
 })
 
+const batchAddForm = reactive({
+  content: ''
+})
+const batchGenerateForm = reactive({
+  count: '',
+  remark: '',
+  domain: '',
+  roleName: ''
+})
+
 const params = reactive({
   email: '',
   num: 1,
@@ -493,8 +593,11 @@ const userForm = reactive({
 })
 
 const showAdd = ref(false)
+const showBatchAdd = ref(false)
+const batchAddResultShow = ref(false)
 const accountShow = ref(false)
 const addLoading = ref(false);
+const batchAddLoading = ref(false);
 const setTypeShow = ref(false)
 const setPwdShow = ref(false)
 const setRemarkShow = ref(false)
@@ -510,6 +613,25 @@ const accountParams = reactive({
   total: 0,
   userId: 0,
 })
+
+const batchAddResult = reactive({
+  totalCount: 0,
+  successCount: 0,
+  failCount: 0,
+  failedItems: []
+})
+function countBatchAddLines(content) {
+  return content
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .length
+}
+const batchAddCount = computed(() => {
+  return countBatchAddLines(batchAddForm.content)
+})
+const batchAddCountText = computed(() => t('batchAddCurrentCount', { count: batchAddCount.value }))
+const batchAddDescText = computed(() => `${t('batchAddUserDesc')}\n${buildBatchAddExampleLine()}`)
 
 roleSelectUse().then(list => {
   roleList.length = 0
@@ -726,6 +848,200 @@ function resetAddForm() {
 
 function openAdd() {
   showAdd.value = true
+}
+
+function buildBatchAddExampleLine() {
+  return `|${t('emailAccount')}|${t('password')}|${t('remark')}|${t('batchAddRoleName')}|`
+}
+
+function buildBatchAddExample() {
+  const exampleLine = buildBatchAddExampleLine()
+  return `${exampleLine}\n${exampleLine}`
+}
+
+function resetBatchAddForm(force = false) {
+  if (force || !batchAddForm.content.trim()) {
+    batchAddForm.content = buildBatchAddExample()
+  }
+  batchGenerateForm.count = ''
+  batchGenerateForm.remark = ''
+  batchGenerateForm.domain = ''
+  batchGenerateForm.roleName = ''
+}
+
+function resetBatchAddResult() {
+  batchAddResult.totalCount = 0
+  batchAddResult.successCount = 0
+  batchAddResult.failCount = 0
+  batchAddResult.failedItems = []
+}
+
+function openBatchAdd() {
+  resetBatchAddForm()
+  resetBatchAddResult()
+  showBatchAdd.value = true
+}
+
+function parseBatchAddRows(content, silent = false) {
+  const lines = content.split(/\r?\n/)
+  const rows = []
+
+  for (let index = 0; index < lines.length; index++) {
+    const rawLine = lines[index].trim()
+    if (!rawLine) continue
+
+    const parts = rawLine.split('|')
+
+    if (parts.length !== 6 || parts[0] !== '' || parts[5] !== '') {
+      return silent ? { rows } : { error: t('batchAddLineFormatError', { line: index + 1 }) }
+    }
+
+    const email = parts[1].trim()
+    const password = parts[2].trim()
+    const remark = parts[3].trim()
+    const roleName = parts[4].trim()
+
+    if (!email || !password || !roleName) {
+      return silent ? { rows } : { error: t('batchAddLineFormatError', { line: index + 1 }) }
+    }
+
+    if (!isEmail(email)) {
+      return silent ? { rows } : { error: t('batchAddLineEmailError', { line: index + 1 }) }
+    }
+
+    const emailDomain = '@' + email.split('@')[1]
+    if (!domainList.includes(emailDomain)) {
+      return silent ? { rows } : { error: t('batchAddLineDomainError', { line: index + 1 }) }
+    }
+
+    if (password.length < 6) {
+      return silent ? { rows } : { error: t('batchAddLinePwdError', { line: index + 1 }) }
+    }
+
+    if (!roleList.some(role => role.name === roleName)) {
+      return silent ? { rows } : { error: t('batchAddLineRoleError', { line: index + 1 }) }
+    }
+
+    rows.push({ email, password, remark, roleName })
+  }
+
+  return { rows }
+}
+
+function appendBatchTemplate() {
+  const count = Number(batchGenerateForm.count)
+
+  if (!Number.isInteger(count) || count <= 0) {
+    ElMessage({
+      message: t('batchGenerateCountError'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  if (!batchGenerateForm.domain) {
+    ElMessage({
+      message: t('batchGenerateDomainError'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  if (!batchGenerateForm.roleName) {
+    ElMessage({
+      message: t('batchGenerateRoleError'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  const currentCount = parseBatchAddRows(batchAddForm.content, true).rows.length
+  if (currentCount + count > 100) {
+    ElMessage({
+      message: t('batchAddMaxCountMsg'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  const remark = batchGenerateForm.remark.trim()
+  const roleName = batchGenerateForm.roleName
+  const lineSuffix = remark
+      ? `|${batchGenerateForm.domain}|000000|${remark}|${roleName}|`
+      : `|${batchGenerateForm.domain}|000000||${roleName}|`
+  const newLines = Array.from({ length: count }, () => lineSuffix).join('\n')
+
+  batchAddForm.content = batchAddForm.content.trim()
+      ? `${batchAddForm.content.trim()}\n${newLines}`
+      : newLines
+}
+
+function formatBatchAddFailure(item) {
+  return t('batchAddFailureItem', {
+    line: item.line,
+    email: item.email || '-',
+    reason: item.reason
+  })
+}
+
+function submitBatchAdd() {
+  if (!batchAddForm.content.trim()) {
+    ElMessage({
+      message: t('batchAddEmptyMsg'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  const { rows, error } = parseBatchAddRows(batchAddForm.content)
+
+  if (error) {
+    ElMessage({
+      message: error,
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  if (!rows.length) {
+    ElMessage({
+      message: t('batchAddEmptyMsg'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  if (rows.length > 100) {
+    ElMessage({
+      message: t('batchAddMaxCountMsg'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  batchAddLoading.value = true
+  userBatchAdd({ content: batchAddForm.content }).then((data) => {
+    batchAddResult.totalCount = data.totalCount
+    batchAddResult.successCount = data.successCount
+    batchAddResult.failCount = data.failCount
+    batchAddResult.failedItems = data.failedItems || []
+    batchAddResultShow.value = true
+    showBatchAdd.value = false
+
+    if (data.successCount > 0) {
+      getUserList(false)
+    }
+  }).finally(() => {
+    batchAddLoading.value = false
+  })
 }
 
 function submit() {
@@ -1163,6 +1479,24 @@ function adjustWidth() {
   }
 }
 
+:deep(.batch-dialog) {
+  width: 560px !important;
+  @media (max-width: 600px) {
+    width: calc(100% - 40px) !important;
+    margin-right: 20px !important;
+    margin-left: 20px !important;
+  }
+}
+
+:deep(.batch-result-dialog) {
+  width: 520px !important;
+  @media (max-width: 560px) {
+    width: calc(100% - 40px) !important;
+    margin-right: 20px !important;
+    margin-left: 20px !important;
+  }
+}
+
 .header-actions {
   padding: 9px 15px;
   display: flex;
@@ -1195,6 +1529,95 @@ function adjustWidth() {
   display: grid;
   grid-template-columns: 1fr;
   gap: 15px;
+}
+
+.batch-dialog-box,
+.batch-result-box {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.batch-add-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.batch-add-tools {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.batch-tools-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.batch-tools-row-bottom {
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) auto;
+}
+
+.batch-tool-submit {
+  min-width: 104px;
+}
+
+@media (max-width: 640px) {
+  .batch-tools-row,
+  .batch-tools-row-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+.batch-add-count {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+.batch-result-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.batch-result-label {
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+
+.batch-result-text {
+  text-align: right;
+  word-break: break-all;
+}
+
+.batch-result-failures {
+  display: grid;
+  gap: 10px;
+}
+
+.batch-result-failure-list {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--el-fill-color-lighter);
+  display: grid;
+  gap: 8px;
+}
+
+.batch-result-failure-item {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .type {

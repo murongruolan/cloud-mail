@@ -16,6 +16,7 @@ import saltHashUtils from '../utils/crypto-utils';
 import constant from '../const/constant';
 import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
+import verifyUtils from '../utils/verify-utils';
 import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
 import subAdminService from './sub-admin-service';
@@ -396,6 +397,155 @@ const userService = {
 		await userService.updateUserInfo(c, userId, true);
 
 		await accountService.insert(c, { userId: userId, email, type, name: emailUtils.getName(email) });
+	},
+
+	async batchAdd(c, params) {
+
+		const { content } = params;
+		const rows = this.parseBatchAddContent(content);
+
+		if (rows.length > 100) {
+			throw new BizError(t('batchAddTooMany'));
+		}
+
+		const roleRows = await roleService.roleSelectUse(c);
+		const roleMap = new Map(roleRows.map(roleRow => [roleRow.name, roleRow.roleId]));
+		const existingAccounts = await accountService.selectByEmailsIncludeDel(c, rows.map(row => row.email));
+		const existingAccountMap = new Map(existingAccounts.map(row => [row.email.toLowerCase(), row]));
+		const seenEmails = new Set();
+		const activeIp = reqUtils.getIp(c);
+		const { os, browser, device } = reqUtils.getUserAgent(c);
+		const activeTime = dayjs().format('YYYY-MM-DD HH:mm:ss');
+
+		const result = {
+			totalCount: rows.length,
+			successCount: 0,
+			failCount: 0,
+			failedItems: []
+		};
+
+		for (const row of rows) {
+			let insertedUserId = 0;
+			try {
+				const normalizedEmail = row.email.toLowerCase();
+
+				if (seenEmails.has(normalizedEmail)) {
+					throw new BizError(t('batchDuplicateEmail'));
+				}
+				seenEmails.add(normalizedEmail);
+
+				if (!verifyUtils.isEmail(row.email)) {
+					throw new BizError(t('notEmail'));
+				}
+
+				if (!c.env.domain.includes(emailUtils.getDomain(row.email))) {
+					throw new BizError(t('notEmailDomain'));
+				}
+
+				if (row.password.length < 6) {
+					throw new BizError(t('pwdMinLength'));
+				}
+
+				const accountRow = existingAccountMap.get(normalizedEmail);
+
+				if (accountRow && accountRow.is_del === isDel.DELETE) {
+					throw new BizError(t('isDelUser'));
+				}
+
+				if (accountRow) {
+					throw new BizError(t('isRegAccount'));
+				}
+
+				const roleId = roleMap.get(row.roleName);
+
+				if (!roleId) {
+					throw new BizError(t('roleNotExist'));
+				}
+
+				const { salt, hash } = await saltHashUtils.hashPassword(row.password);
+				insertedUserId = await userService.insert(c, {
+					email: row.email,
+					password: hash,
+					salt,
+					type: roleId,
+					remark: row.remark,
+					createIp: activeIp,
+					activeIp,
+					os,
+					browser,
+					device,
+					activeTime
+				});
+
+				await accountService.insert(c, {
+					userId: insertedUserId,
+					email: row.email,
+					type: roleId,
+					name: emailUtils.getName(row.email)
+				});
+
+				existingAccountMap.set(normalizedEmail, { email: row.email, is_del: isDel.NORMAL });
+				result.successCount++;
+			} catch (error) {
+				if (insertedUserId) {
+					await orm(c).delete(user).where(eq(user.userId, insertedUserId)).run().catch(() => {});
+				}
+				result.failCount++;
+				result.failedItems.push({
+					line: row.line,
+					email: row.email,
+					reason: error?.message || 'Unknown error'
+				});
+			}
+		}
+
+		return result;
+	},
+
+	parseBatchAddContent(content) {
+		if (!content || !content.trim()) {
+			throw new BizError(t('batchAddEmptyContent'));
+		}
+
+		const rows = [];
+		const lines = content.split(/\r?\n/);
+
+		for (let index = 0; index < lines.length; index++) {
+			const rawLine = lines[index].trim();
+
+			if (!rawLine) {
+				continue;
+			}
+
+			const parts = rawLine.split('|');
+
+			if (parts.length !== 6 || parts[0] !== '' || parts[5] !== '') {
+				throw new BizError(t('batchAddLineFormatInvalid', { line: index + 1 }));
+			}
+
+			const email = parts[1].trim();
+			const password = parts[2].trim();
+			const remark = parts[3].trim();
+			const roleName = parts[4].trim();
+
+			if (!email || !password || !roleName) {
+				throw new BizError(t('batchAddLineFormatInvalid', { line: index + 1 }));
+			}
+
+			rows.push({
+				line: index + 1,
+				email,
+				password,
+				remark,
+				roleName
+			});
+		}
+
+		if (!rows.length) {
+			throw new BizError(t('batchAddEmptyContent'));
+		}
+
+		return rows;
 	},
 
 	async resetDaySendCount(c) {
