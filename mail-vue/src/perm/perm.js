@@ -118,5 +118,25 @@ const routers = {
             name: 'analysis',
             menu: true
         }
+    }],
+    'sub-admin:query': [{
+        path: '/sub-admin',
+        name: 'sub-admin',
+        component: () => import('@/views/sub-admin/index.vue'),
+        meta: {
+            title: 'subAdminList',
+            name: 'sub-admin',
+            menu: true
+        }
+    }],
+    'admin-log:query': [{
+        path: '/operation-logs',
+        name: 'admin-log',
+        component: () => import('@/views/admin-log/index.vue'),
+        meta: {
+            title: 'operationLogs',
+            name: 'admin-log',
+            menu: true
+        }
     }]
 }
