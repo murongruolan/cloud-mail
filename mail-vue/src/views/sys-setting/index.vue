@@ -383,6 +383,9 @@
                   </el-button>
                 </div>
               </div>
+              <el-button class="backup-button" type="primary" :loading="manualBackupLoading" @click="triggerManualBackup">
+                {{ $t('manualBackup') }}
+              </el-button>
             </div>
           </div>
 
@@ -834,6 +837,30 @@
           <el-button type="primary" :loading="settingLoading" @click="saveAttachmentLimit">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
+      <el-dialog v-model="backupStatusShow" :title="t('backupStatus')" width="460" @closed="stopBackupPolling">
+        <div class="backup-status-panel">
+          <div class="backup-status-row">
+            <span>{{ t('backupStage') }}</span>
+            <el-tag :type="backupStatusTagType">{{ backupStageLabel }}</el-tag>
+          </div>
+          <div class="backup-status-row">
+            <span>{{ t('backupMessage') }}</span>
+            <span class="backup-status-text">{{ backupStatusData.message || '-' }}</span>
+          </div>
+          <div class="backup-status-row" v-if="backupStatusData.startedAt">
+            <span>Started</span>
+            <span class="backup-status-text">{{ backupStatusData.startedAt }}</span>
+          </div>
+          <div class="backup-status-row" v-if="backupStatusData.finishedAt">
+            <span>Finished</span>
+            <span class="backup-status-text">{{ backupStatusData.finishedAt }}</span>
+          </div>
+          <div class="backup-status-details" v-if="backupStatusData.details">
+            <span>{{ t('backupDetails') }}</span>
+            <el-input type="textarea" :rows="10" readonly :model-value="backupStatusData.details"/>
+          </div>
+        </div>
+      </el-dialog>
       <el-dialog v-model="emailPrefixShow" :title="t('emailPrefix')"  @closed="resetEmailPrefix"  >
         <div class="email-prefix">
           <div>{{ t('atLeast') }}</div>
@@ -854,8 +881,8 @@
 </template>
 
 <script setup>
-import {computed, defineOptions, reactive, ref} from "vue";
-import {deleteBackground, setBackground, settingQuery, settingSet} from "@/request/setting.js";
+import {computed, defineOptions, onUnmounted, reactive, ref} from "vue";
+import {backupStatus, deleteBackground, runBackup, setBackground, settingQuery, settingSet} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -891,6 +918,7 @@ const turnstileShow = ref(false)
 const backupCronShow = ref(false)
 const backupStorageShow = ref(false)
 const attachmentLimitShow = ref(false)
+const backupStatusShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
@@ -904,6 +932,7 @@ const editTitle = ref('')
 const settingLoading = ref(false)
 const clearS3Loading = ref(false)
 const clearBackupStorageLoading = ref(false)
+const manualBackupLoading = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
@@ -951,6 +980,21 @@ const attachmentLimitForm = reactive({
   attachmentSizeLimitMb: 0
 })
 
+const backupStatusData = reactive({
+  status: 'idle',
+  stage: 'idle',
+  message: '',
+  details: '',
+  startedAt: null,
+  finishedAt: null,
+  source: ''
+})
+
+let backupPollingTimer = null
+let backupPollingCount = 0
+const BACKUP_POLL_INTERVAL = 1000
+const BACKUP_POLL_MAX = 300
+
 const noticeForm = reactive({
   noticeTitle: '',
   noticeContent: '',
@@ -978,6 +1022,27 @@ const authRefreshOptions = computed(() => [
 ])
 
 const backupHourOptions = Array.from({ length: 24 }, (_, index) => index)
+
+const backupStageLabel = computed(() => {
+  const map = {
+    queued: t('backupQueued'),
+    validating: t('backupValidating'),
+    exporting: t('backupExporting'),
+    uploading: t('backupUploading'),
+    cleaning: t('backupCleaning'),
+    completed: t('backupCompleted'),
+    failed: t('backupFailed'),
+    idle: '-'
+  }
+  return map[backupStatusData.stage] || backupStatusData.stage || '-'
+})
+
+const backupStatusTagType = computed(() => {
+  if (backupStatusData.status === 'success') return 'success'
+  if (backupStatusData.status === 'failed') return 'danger'
+  if (backupStatusData.status === 'running') return 'warning'
+  return 'info'
+})
 
 const tgChatId = ref([])
 const customDomain = ref('')
@@ -1312,6 +1377,87 @@ function saveAttachmentLimit() {
     attachmentSizeLimitMb: attachmentLimitForm.attachmentSizeLimitMb
   })
 }
+
+function triggerManualBackup() {
+  if (manualBackupLoading.value) return
+
+  ElMessageBox.confirm(t('manualBackupConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    manualBackupLoading.value = true
+    backupStatusShow.value = true
+    runBackup().then(({ started, status }) => {
+      if (status) {
+        Object.assign(backupStatusData, status)
+      }
+      if (!started && status?.status === 'running') {
+        ElMessage({
+          message: t('backupAlreadyRunning'),
+          type: 'warning',
+          plain: true
+        })
+      }
+      startBackupPolling()
+    }).catch((error) => {
+      backupStatusData.status = 'failed'
+      backupStatusData.stage = 'failed'
+      backupStatusData.message = error.message || t('backupFailed')
+      backupStatusData.details = error.message || ''
+      stopBackupPolling()
+    }).finally(() => {
+      manualBackupLoading.value = false
+    })
+  }).catch(() => {})
+}
+
+function startBackupPolling() {
+  stopBackupPolling()
+  backupPollingCount = 0
+
+  const poll = async () => {
+    backupPollingCount++
+    try {
+      const status = await backupStatus()
+      Object.assign(backupStatusData, status)
+
+      if (status.status === 'success' || status.status === 'failed') {
+        stopBackupPolling()
+        return
+      }
+
+      if (backupPollingCount >= BACKUP_POLL_MAX) {
+        stopBackupPolling()
+        ElMessage({
+          message: t('backupPollingTimeout'),
+          type: 'warning',
+          plain: true
+        })
+      }
+    } catch (error) {
+      stopBackupPolling()
+      backupStatusData.status = 'failed'
+      backupStatusData.stage = 'failed'
+      backupStatusData.message = error.message || t('backupFailed')
+      backupStatusData.details = error.message || ''
+    }
+  }
+
+  poll()
+  backupPollingTimer = setInterval(poll, BACKUP_POLL_INTERVAL)
+}
+
+function stopBackupPolling() {
+  if (backupPollingTimer) {
+    clearInterval(backupPollingTimer)
+    backupPollingTimer = null
+  }
+}
+
+onUnmounted(() => {
+  stopBackupPolling()
+})
 
 function tgBotSave() {
   const form = {
@@ -1980,6 +2126,32 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .attachment-limit-input {
   width: 100%;
+}
+
+.backup-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.backup-status-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.backup-status-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.backup-status-text {
+  word-break: break-word;
+}
+
+.backup-status-details {
+  display: grid;
+  gap: 8px;
 }
 
 .force-path-style {

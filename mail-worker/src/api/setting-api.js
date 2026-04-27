@@ -1,6 +1,7 @@
 import app from '../hono/hono';
 import result from '../model/result';
 import settingService from '../service/setting-service';
+import dbBackupService from '../service/db-backup-service';
 
 app.put('/setting/set', async (c) => {
 	await settingService.set(c, await c.req.json());
@@ -25,5 +26,15 @@ app.put('/setting/setBackground', async (c) => {
 app.delete('/setting/deleteBackground', async (c) => {
 	await settingService.deleteBackground(c);
 	return c.json(result.ok());
+});
+
+app.post('/setting/runBackup', async (c) => {
+	const data = await dbBackupService.triggerManualBackup(c);
+	return c.json(result.ok(data));
+});
+
+app.get('/setting/backupStatus', async (c) => {
+	const data = await dbBackupService.getStatus(c);
+	return c.json(result.ok(data));
 });
 
