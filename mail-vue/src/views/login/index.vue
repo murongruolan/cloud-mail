@@ -211,6 +211,7 @@ suffix.value = domainList[0]
 const verifyShow = ref(false)
 const loginVerifyShow = ref(false)
 const pendingLoginAfterVerify = ref(false)
+const loginVerifyNeedsManualSubmit = ref(false)
 let verifyToken = ''
 let turnstileId = null
 let botJsError = ref(false)
@@ -226,6 +227,9 @@ window.onTurnstileSuccess = (token) => {
 
 window.onLoginTurnstileSuccess = (token) => {
   loginVerifyToken = token;
+  if (loginVerifyNeedsManualSubmit.value) {
+    return
+  }
   if (pendingLoginAfterVerify.value && !loginLoading.value) {
     pendingLoginAfterVerify.value = false
     doLogin()
@@ -250,6 +254,8 @@ window.onTurnstileError = (e) => {
 };
 
 window.onLoginTurnstileError = (e) => {
+  pendingLoginAfterVerify.value = false
+  loginVerifyNeedsManualSubmit.value = true
   if (loginVerifyErrorCount >= 4) {
     return
   }
@@ -424,7 +430,7 @@ const submit = () => {
   }
 
   if (!loginVerifyToken && settingStore.settings.loginVerify === 0) {
-    pendingLoginAfterVerify.value = true
+    pendingLoginAfterVerify.value = !loginVerifyNeedsManualSubmit.value
     if (!loginVerifyShow.value) {
       loginVerifyShow.value = true
       nextTick(() => {
@@ -432,6 +438,8 @@ const submit = () => {
           try {
             loginTurnstileId = window.turnstile.render('.login-turnstile')
           } catch (e) {
+            pendingLoginAfterVerify.value = false
+            loginVerifyNeedsManualSubmit.value = true
             loginBotJsError.value = true
             console.log('登录人机验证js加载失败')
           }
@@ -450,6 +458,7 @@ const submit = () => {
   }
 
   pendingLoginAfterVerify.value = false
+  loginVerifyNeedsManualSubmit.value = false
   doLogin()
 }
 
