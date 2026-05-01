@@ -412,6 +412,22 @@
             </div>
           </div>
 
+          <div class="settings-card">
+            <div class="card-title">{{ $t('apiSetting') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div><span>{{ $t('publicApi') }}</span></div>
+                <div class="forward">
+                  <el-button class="opt-button attachment-limit-button" style="margin-top: 0" size="small" type="primary" @click="openApiKeySetting">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.apiStatus"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
@@ -837,6 +853,15 @@
           <el-button type="primary" :loading="settingLoading" @click="saveAttachmentLimit">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
+      <el-dialog v-model="apiKeyShow" :title="t('apiKeyConfig')" width="340" @closed="resetApiKeyForm">
+        <form>
+          <el-input class="dialog-input" type="text" placeholder="apiKey" v-model="apiKeyInput"/>
+          <div class="limit-helper">
+            <span>{{ t('appKeyHeaderDesc') }}</span>
+          </div>
+          <el-button type="primary" :loading="settingLoading" @click="saveApiKey">{{ $t('save') }}</el-button>
+        </form>
+      </el-dialog>
       <el-dialog v-model="backupStatusShow" :title="t('backupStatus')" width="460" @closed="stopBackupPolling">
         <div class="backup-status-panel">
           <div class="backup-status-row">
@@ -902,7 +927,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v2.9.0-murong.1.1'
+const currentVersion = 'v2.9.0-murong.1.2'
 const hasUpdate = ref(false)
 let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
@@ -918,6 +943,7 @@ const turnstileShow = ref(false)
 const backupCronShow = ref(false)
 const backupStorageShow = ref(false)
 const attachmentLimitShow = ref(false)
+const apiKeyShow = ref(false)
 const backupStatusShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
@@ -938,6 +964,7 @@ const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
 const emailPrefixFilter = ref([])
 const backgroundUrl = ref('')
+const apiKeyInput = ref('')
 let backgroundFile = {}
 const showSetBackground = ref(false)
 let regVerifyCount = ref(1)
@@ -1113,6 +1140,7 @@ function getSettings() {
     backupIntervalDays.value = setting.value.backupIntervalDays
     backupHour.value = setting.value.backupHour
     resetAttachmentLimitForm()
+    resetApiKeyForm()
     resetNoticeForm()
     resetAddS3Form()
     resetBackupStorageForm()
@@ -1166,6 +1194,10 @@ function resetBackupStorageForm() {
 function resetAttachmentLimitForm() {
   attachmentLimitForm.contentImageSizeLimitMb = setting.value.contentImageSizeLimitMb ?? 0
   attachmentLimitForm.attachmentSizeLimitMb = setting.value.attachmentSizeLimitMb ?? 0
+}
+
+function resetApiKeyForm() {
+  apiKeyInput.value = setting.value.apiKey || ''
 }
 
 const resendList = computed(() => {
@@ -1292,6 +1324,12 @@ function openEmailPrefix() {
   emailPrefixShow.value = true
 }
 
+function openApiKeySetting() {
+  if (settingLoading.value) return
+  resetApiKeyForm()
+  apiKeyShow.value = true
+}
+
 function openForwardRules() {
   ruleType.value = setting.value.ruleType
   ruleEmail.value = []
@@ -1406,6 +1444,12 @@ function saveAttachmentLimit() {
   editSetting({
     contentImageSizeLimitMb: attachmentLimitForm.contentImageSizeLimitMb,
     attachmentSizeLimitMb: attachmentLimitForm.attachmentSizeLimitMb
+  })
+}
+
+function saveApiKey() {
+  editSetting({
+    apiKey: apiKeyInput.value
   })
 }
 
@@ -1710,6 +1754,7 @@ function editSetting(settingForm, refreshStatus = true) {
     backupCronShow.value = false
     backupStorageShow.value = false
     attachmentLimitShow.value = false
+    apiKeyShow.value = false
     thirdEmailShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false

@@ -397,6 +397,7 @@ const userService = {
 		await userService.updateUserInfo(c, userId, true);
 
 		await accountService.insert(c, { userId: userId, email, type, name: emailUtils.getName(email) });
+		return userId;
 	},
 
 	async batchAdd(c, params) {

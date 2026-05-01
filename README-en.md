@@ -35,7 +35,14 @@ This is an independent fork of **[maillab/cloud-mail](https://github.com/maillab
 - `release` branch: Production-ready branch, only merged with tested stable code, corresponding to tagged releases
 
 ### Key Changes in This Fork
-**[2.9.0-murong.1](https://github.com/murongruolan/cloud-mail/tags)**
+**2026-05-02**
+**[2.9.0-murong.1.2](https://github.com/murongruolan/cloud-mail/tags)**
+- Public API: Added app-facing public APIs authenticated by the `c-app-key` request header, supporting email account creation, unread message listing, message detail retrieval, and marking messages as read
+- API Settings: Added an "API Settings" card in System Settings, allowing admins to configure the public API switch and apiKey stored in Cloudflare KV
+- API Documentation: Added `swagger.yaml` at the repository root with OpenAPI/Swagger documentation, including header authentication, request models, response models, and success/failure examples
+
+**2026-04-30**
+**[2.9.0-murong.1.0](https://github.com/murongruolan/cloud-mail/tags)**
 - Management Enhancements: Added a sub-admin system and an operation log page, allowing the main admin to add, remark, disable, and remove sub-admins while recording privileged mutating actions separately
 - User Administration Improvements: Added user remarks, batch user creation, and better narrow-screen behavior in the user list, with extra safeguards around the super admin row
 - Security and Access Control: Added login Turnstile verification, automatic login continuation after verification, idempotent initialization protection, attachment/body-image size limits, and smoother keyboard interaction on login/register pages
