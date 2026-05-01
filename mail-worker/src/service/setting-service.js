@@ -88,6 +88,7 @@ const settingService = {
 			await this.query(c),
 			verifyRecordService.selectListByIP(c)
 		]);
+		const apiConfig = await this.getApiConfig(c);
 
 
 		if (!showSiteKey) {
@@ -122,28 +123,67 @@ const settingService = {
 		settingRow.addVerifyOpen = addVerifyOpen
 
 		settingRow.storageType = await r2Service.storageType(c);
+		settingRow.apiStatus = apiConfig.apiStatus;
+		settingRow.apiKey = apiConfig.apiKey;
 
 		return settingRow;
 	},
 
 	async set(c, params) {
-		const settingData = await this.query(c);
-		let resendTokens = { ...settingData.resendTokens, ...params.resendTokens };
-		Object.keys(resendTokens).forEach(domain => {
-			if (!resendTokens[domain]) delete resendTokens[domain];
-		});
+		const hasApiConfig =
+			Object.prototype.hasOwnProperty.call(params, 'apiStatus') ||
+			Object.prototype.hasOwnProperty.call(params, 'apiKey');
+		const dbParams = { ...params };
+		delete dbParams.apiStatus;
+		delete dbParams.apiKey;
 
-		if (Array.isArray(params.emailPrefixFilter)) {
-			params.emailPrefixFilter = params.emailPrefixFilter + '';
+		const settingData = await this.query(c);
+
+		if (Object.keys(dbParams).length > 0) {
+			let resendTokens = { ...settingData.resendTokens, ...dbParams.resendTokens };
+			Object.keys(resendTokens).forEach(domain => {
+				if (!resendTokens[domain]) delete resendTokens[domain];
+			});
+
+			if (Array.isArray(dbParams.emailPrefixFilter)) {
+				dbParams.emailPrefixFilter = dbParams.emailPrefixFilter + '';
+			}
+
+			this.validateTurnstileConfig({ ...settingData, ...dbParams });
+			this.validateAttachmentLimitConfig({ ...settingData, ...dbParams });
+			this.validateBackupConfig({ ...settingData, ...dbParams });
+
+			dbParams.resendTokens = JSON.stringify(resendTokens);
+			await orm(c).update(setting).set({ ...dbParams }).returning().get();
+			await this.refresh(c);
 		}
 
-		this.validateTurnstileConfig({ ...settingData, ...params });
-		this.validateAttachmentLimitConfig({ ...settingData, ...params });
-		this.validateBackupConfig({ ...settingData, ...params });
+		if (hasApiConfig) {
+			await this.setApiConfig(c, params);
+		}
+	},
 
-		params.resendTokens = JSON.stringify(resendTokens);
-		await orm(c).update(setting).set({ ...params }).returning().get();
-		await this.refresh(c);
+	async getApiConfig(c) {
+		const apiConfig = await c.env.kv.get(KvConst.APP_API_CONFIG, { type: 'json' });
+		return {
+			apiStatus: Number(apiConfig?.apiStatus ?? settingConst.appApi.CLOSE),
+			apiKey: typeof apiConfig?.apiKey === 'string' ? apiConfig.apiKey : ''
+		};
+	},
+
+	async setApiConfig(c, params) {
+		const apiConfig = await this.getApiConfig(c);
+
+		if (Object.prototype.hasOwnProperty.call(params, 'apiStatus')) {
+			apiConfig.apiStatus = Number(params.apiStatus);
+		}
+
+		if (Object.prototype.hasOwnProperty.call(params, 'apiKey')) {
+			apiConfig.apiKey = typeof params.apiKey === 'string' ? params.apiKey.trim() : '';
+		}
+
+		await c.env.kv.put(KvConst.APP_API_CONFIG, JSON.stringify(apiConfig));
+		return apiConfig;
 	},
 
 	validateTurnstileConfig(settingData) {

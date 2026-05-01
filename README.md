@@ -35,7 +35,14 @@
 - `release` 分支：生产可用分支，发布Tag版本
 
 ### 本分支核心变更
-**[2.9.0-murong.1](https://github.com/murongruolan/cloud-mail/tags)**
+**2026-05-02**
+**[2.9.0-murong.1.2](https://github.com/murongruolan/cloud-mail/tags)**
+- 公共接口能力：新增基于 `c-app-key` 请求头鉴权的公共 App API，支持创建邮箱账号、获取用户未读邮件列表、获取邮件详情、标记邮件已读
+- 接口配置：在系统设置页新增「接口设置」区块，可配置公共 API 开关与 apiKey，配置数据存储于 Cloudflare KV
+- 接口文档：根目录新增 `swagger.yaml`，提供公共接口的 OpenAPI/Swagger 文档，包含请求头鉴权、入参模型、出参模型与成功/失败示例
+
+**2026-04-30**
+**[2.9.0-murong.1.0](https://github.com/murongruolan/cloud-mail/tags)**
 - 新增管理能力：新增子管理员体系与操作日志页面，支持主管理员添加/备注/禁用/删除子管理员，并对管理类修改操作进行独立记录与筛选查询
 - 用户管理增强：用户列表支持备注展示与修改、批量添加用户、窄屏下管理列自适应优化，并补充对超级管理员行的安全限制
 - 安全与风控：新增登录 Turnstile 验证、验证完成后自动继续登录、初始化接口幂等保护、附件与正文图片大小限制，以及登录/注册页更顺手的键盘交互

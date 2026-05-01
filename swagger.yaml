@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: Cloud Mail Public App API
+  version: 1.0.0
+  description: |
+    Cloud Mail 公共接口文档。
+
+    所有接口通过请求头 `c-app-key` 传入系统设置中配置的 apiKey 进行鉴权。
+    当公共 API 关闭、apiKey 缺失或不正确、参数错误、业务处理失败时，接口返回 `success: false`。
+servers:
+  - url: /
+    description: 当前站点
+tags:
+  - name: App API
+    description: apiKey 鉴权的公共接口
+security:
+  - ApiKeyAuth: []
+paths:
+  /api/app/createUser:
+    post:
+      tags:
+        - App API
+      summary: 创建邮箱账号
+      operationId: createEmailUser
+      description: 创建一个邮箱用户，将 `localPart` 和 `domain` 组合为完整邮箱地址。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEmailUserRequest'
+            example:
+              domain: a.com
+              localPart: aaa
+              permission: 1
+              remark: 测试账号
+      responses:
+        '200':
+          description: |
+            统一返回模型。鉴权失败、API 关闭、参数错误或创建失败时返回 `success: false`。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateEmailUserResponse'
+              examples:
+                success:
+                  summary: 创建成功
+                  value:
+                    success: true
+                    data:
+                      userId: 12
+                      address: aaa@a.com
+                fail:
+                  summary: 失败
+                  value:
+                    success: false
+                    data: null
+
+  /api/app/unreadMessages:
+    get:
+      tags:
+        - App API
+      summary: 获取未读邮件列表
+      operationId: getUnreadMessages
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: 邮箱用户 ID
+          schema:
+            type: integer
+            format: int64
+            example: 12
+      responses:
+        '200':
+          description: |
+            按接收时间倒序返回该用户所有未读收件。鉴权失败、API 关闭或查询失败时返回 `success: false`。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadMessagesResponse'
+              examples:
+                success:
+                  summary: 查询成功
+                  value:
+                    success: true
+                    data:
+                      messages:
+                        - id: 101
+                          from: sender@example.com
+                          to: aaa@a.com
+                          createdAt: 1714550400
+                fail:
+                  summary: 失败
+                  value:
+                    success: false
+                    data: null
+
+  /api/app/messageDetail:
+    get:
+      tags:
+        - App API
+      summary: 获取邮件详情
+      operationId: getMessageDetail
+      parameters:
+        - name: messageID
+          in: query
+          required: true
+          description: 未读邮件列表接口返回的邮件 ID
+          schema:
+            type: integer
+            format: int64
+            example: 101
+      responses:
+        '200':
+          description: |
+            返回邮件正文内容。鉴权失败、API 关闭、邮件不存在或查询失败时返回 `success: false`。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageDetailResponse'
+              examples:
+                success:
+                  summary: 查询成功
+                  value:
+                    success: true
+                    data:
+                      id: 101
+                      from: sender@example.com
+                      to: aaa@a.com
+                      content: '<p>Hello</p>'
+                      createdAt: 1714550400
+                fail:
+                  summary: 失败
+                  value:
+                    success: false
+                    data: null
+
+  /api/app/markRead:
+    post:
+      tags:
+        - App API
+      summary: 标记邮件已读
+      operationId: markMessageRead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+            example:
+              id: 101
+      responses:
+        '200':
+          description: |
+            将指定邮件标记为已读。鉴权失败、API 关闭、参数错误或更新失败时返回 `success: false`。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkReadResponse'
+              examples:
+                success:
+                  summary: 标记成功
+                  value:
+                    success: true
+                    data: null
+                fail:
+                  summary: 失败
+                  value:
+                    success: false
+                    data: null
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: c-app-key
+      description: 系统设置中配置的公共接口 apiKey。
+
+  schemas:
+    CreateEmailUserRequest:
+      type: object
+      required:
+        - domain
+        - localPart
+        - permission
+      properties:
+        domain:
+          type: string
+          description: 邮箱域名，不需要带 `@`；服务端会兼容去除开头的 `@`。
+          example: a.com
+        localPart:
+          type: string
+          description: 邮箱名称，即 `@` 前面的部分。
+          example: aaa
+        permission:
+          type: integer
+          format: int64
+          description: 权限身份 roleId。
+          example: 1
+        remark:
+          type: string
+          description: 用户备注。
+          example: 测试账号
+
+    CreateEmailUserData:
+      type: object
+      required:
+        - userId
+        - address
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: 创建好的用户 ID。
+          example: 12
+        address:
+          type: string
+          format: email
+          description: 完整邮箱地址。
+          example: aaa@a.com
+
+    CreateEmailUserResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/CreateEmailUserData'
+
+    MessageSummary:
+      type: object
+      required:
+        - id
+        - from
+        - to
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 邮件 ID。
+          example: 101
+        from:
+          type: string
+          description: 发件人邮箱，对应 sendEmail。
+          example: sender@example.com
+        to:
+          type: string
+          description: 收件人邮箱，对应 toEmail。
+          example: aaa@a.com
+        createdAt:
+          type: integer
+          format: int64
+          description: 邮件接收时间，Unix 秒级时间戳。
+          example: 1714550400
+
+    UnreadMessagesData:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          description: 未读邮件列表，按最新时间倒序排列。
+          items:
+            $ref: '#/components/schemas/MessageSummary'
+
+    UnreadMessagesResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/UnreadMessagesData'
+
+    MessageDetailData:
+      type: object
+      required:
+        - id
+        - from
+        - to
+        - content
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 邮件 ID。
+          example: 101
+        from:
+          type: string
+          description: 发件人邮箱，对应 sendEmail。
+          example: sender@example.com
+        to:
+          type: string
+          description: 收件人邮箱，对应 toEmail。
+          example: aaa@a.com
+        content:
+          type: string
+          description: 邮件内容。
+          example: '<p>Hello</p>'
+        createdAt:
+          type: integer
+          format: int64
+          description: 邮件接收时间，Unix 秒级时间戳。
+          example: 1714550400
+
+    MessageDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/MessageDetailData'
+
+    MarkReadRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 邮件 ID。
+          example: 101
+
+    MarkReadResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              description: 标记成功时为 null。
+              example: null
+
+    BaseResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          description: 请求是否成功。
+          example: true
+        data:
+          nullable: true
+          description: 业务数据；失败时为 null。
